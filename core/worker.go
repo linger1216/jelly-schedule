@@ -27,19 +27,26 @@ func NewWorker(name string, discover *etcdv3.Etcd) *Worker {
 	ret := &Worker{name: name, discover: discover}
 	ret.dir, _ = os.Getwd()
 	ret.discover = discover
-	ret.role = Follower
-	l.Debugf("%s", ret.String())
 
+	ret.changeRole(Unknown)
 	err := ret.register()
 	if err != nil {
 		panic(err)
 	}
-	err = ret.watchVote()
+
+	err = ret.watchElection()
 	if err != nil {
 		panic(err)
 	}
 
 	ret.startElection()
+
+	go func() {
+		for {
+			l.Debugf("worker %s", ret.String())
+			time.Sleep(time.Second * 3)
+		}
+	}()
 	return ret
 }
 
@@ -55,25 +62,34 @@ func (w *Worker) startElection() {
 	err := w.discover.TxKeepaliveWithTTL(EtcdLeaderKey, w.name, TTL)
 	if err != nil {
 		l.Debugf("startElection err:%s", err.Error())
+		// 选举不成功的话,默认为Follower
+		// 如果此时已经有了leader, 当worker运行时, 是不会受到put消息的, 只有通过
+		// 是否成功竞选才能判定role
+		w.changeRole(Follower)
+	} else {
+		w.changeRole(Leader)
 	}
 }
 
-func (w *Worker) watchVote() error {
+func (w *Worker) watchElection() error {
 	return w.discover.WatchWithPrefix(EtcdLeaderKey, func(event *clientv3.Event) {
 		switch event.Type {
 		case mvccpb.PUT:
-			if event.IsCreate() {
-				l.Debugf("leader create:%s", string(event.Kv.Value))
+			if string(event.Kv.Value) == w.name {
+				w.changeRole(Leader)
 			} else {
-				l.Debugf("leader update:%s", string(event.Kv.Value))
+				w.changeRole(Follower)
 			}
 		case mvccpb.DELETE:
-			l.Debugf("delete leader")
 			time.Sleep(time.Second)
-			l.Debugf("prepare election leader")
+			l.Debugf("need election leader again")
 			w.startElection()
 		}
 	})
+}
+
+func (w *Worker) changeRole(role WorkerRole) {
+	w.role = role
 }
 
 func (w *Worker) String() string {
