@@ -1,4 +1,4 @@
-go build -o worker1 main.go
-go build -o worker2 main.go
-go build -o worker3 main.go
-go build -o worker4 main.go
+go build -o worker main.go
+
+
+# ./worker --etcd 172.3.0.122:2379 --name a1

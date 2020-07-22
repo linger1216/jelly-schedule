@@ -11,6 +11,8 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/uuid v1.1.1 // indirect
+	github.com/gorilla/mux v1.7.4 // indirect
+	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/valyala/fasttemplate v1.2.0
 	go.uber.org/zap v1.15.0
 	google.golang.org/grpc v1.26.0 // indirect

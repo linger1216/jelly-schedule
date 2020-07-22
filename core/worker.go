@@ -13,7 +13,7 @@ import "github.com/valyala/fasttemplate"
 var (
 	EtcdWorkerFormat = fasttemplate.New(`/schedule/worker/{name}`, "{", "}")
 	EtcdLeaderKey    = `/schedule/leader`
-	TTL              = int64(10)
+	TTL              = int64(5)
 )
 
 type Worker struct {
@@ -34,7 +34,7 @@ func NewWorker(name string, discover *etcdv3.Etcd) *Worker {
 		panic(err)
 	}
 
-	err = ret.watchElection()
+	err = ret.watchElectionLeader()
 	if err != nil {
 		panic(err)
 	}
@@ -63,15 +63,15 @@ func (w *Worker) startElection() {
 	if err != nil {
 		l.Debugf("startElection err:%s", err.Error())
 		// 选举不成功的话,默认为Follower
-		// 如果此时已经有了leader, 当worker运行时, 是不会受到put消息的, 只有通过
-		// 是否成功竞选才能判定role
+		// 如果此时已经有了leader, 当worker运行时, 是不会受到put消息的, 所以没法在watch中判定role
+		// 刚开始只有通过是否成功竞选才能判定role
 		w.changeRole(Follower)
 	} else {
 		w.changeRole(Leader)
 	}
 }
 
-func (w *Worker) watchElection() error {
+func (w *Worker) watchElectionLeader() error {
 	return w.discover.WatchWithPrefix(EtcdLeaderKey, func(event *clientv3.Event) {
 		switch event.Type {
 		case mvccpb.PUT:

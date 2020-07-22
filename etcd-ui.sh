@@ -5,4 +5,4 @@
 
 
 
-ETCDCTL_API=3 etcdctl put /schedule/leader "192.168.129.116"
+# ETCDCTL_API=3 etcdctl put /schedule/leader "192.168.129.116"
