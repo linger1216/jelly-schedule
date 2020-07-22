@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/gorilla/rpc/json"
-	"github.com/linger1216/jelly-schedule/example/jsonrpc"
 	"log"
 	"net/http"
 )
@@ -17,9 +16,7 @@ func checkError(err error) {
 
 func main() {
 	url := "http://localhost:12345/rpc"
-	args := jsonrpc.Request{
-		Req: "hello jsonrpc",
-	}
+	args := "hello jsonrpc"
 
 	message, err := json.EncodeClientRequest("DefaultJsonRPCService.Exec", args)
 	checkError(err)
@@ -29,9 +26,9 @@ func main() {
 
 	checkError(err)
 
-	reply := &jsonrpc.Response{}
-	err = json.DecodeClientResponse(resp.Body, reply)
+	reply := ""
+	err = json.DecodeClientResponse(resp.Body, &reply)
 	checkError(err)
 
-	fmt.Printf("%s\n", reply.Resp)
+	fmt.Printf("%s\n", reply)
 }

@@ -5,20 +5,23 @@ import (
 	"net/http"
 )
 
-type Request struct {
-	Req string
-}
+//type Request struct {
+//	Req interface{}
+//}
+//
+//type Response struct {
+//	Resp interface{}
+//}
 
-type Response struct {
-	Resp string
-}
+type Request interface{}
+type Response interface{}
 
 type DefaultJsonRPCService struct{}
 
 func (t *DefaultJsonRPCService) Exec(r *http.Request, arg *Request, result *Response) error {
 	//log.Printf("Multiply %d with %d\n", args.A, args.B)
 	//*result = args.A * args.B
-	fmt.Printf("Req:%s\n", arg.Req)
-	result.Resp = fmt.Sprintf("Resp:%s", arg.Req)
+	fmt.Printf("Req:%s\n", (*arg).(string))
+	*result = fmt.Sprintf("Resp:%s", (*arg).(string))
 	return nil
 }
