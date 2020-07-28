@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/etcdv3"
 	"github.com/linger1216/jelly-schedule/utils"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
@@ -14,7 +13,7 @@ import (
 
 var (
 	name = kingpin.Flag("name", "worker name").String()
-	etcd = kingpin.Flag("etcd", "etcd address").Default("127.0.0.1:2379").String()
+	etcd = kingpin.Flag("etcd", "etcd address").Default("172.3.0.122:2379").String()
 )
 
 func init() {
@@ -28,7 +27,7 @@ func main() {
 	}
 
 	end := make(chan error)
-	etcd, err := etcdv3.NewEtcd([]string{*etcd}, time.Second)
+	etcd, err := core.NewEtcd([]string{*etcd}, time.Duration(core.TTL)*time.Second)
 	if err != nil {
 		panic(err)
 	}

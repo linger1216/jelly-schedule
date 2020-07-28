@@ -3,7 +3,7 @@ package core
 type WorkerRole uint8
 
 const (
-	Unknown WorkerRole = iota
+	Wait WorkerRole = iota
 	Follower
 	Leader
 )
@@ -15,5 +15,5 @@ func getWorkerRoleDescription(role WorkerRole) string {
 	case Leader:
 		return "Leader"
 	}
-	return "Unknown"
+	return "Wait"
 }
