@@ -5,11 +5,15 @@ import (
 	"github.com/linger1216/jelly-schedule/core"
 	"github.com/linger1216/jelly-schedule/utils"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
+
+import _ "net/http/pprof"
 
 var (
 	name = kingpin.Flag("name", "worker name").String()
@@ -22,6 +26,11 @@ func init() {
 }
 
 func main() {
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	if len(*name) == 0 {
 		*name = utils.GetHost()
 	}

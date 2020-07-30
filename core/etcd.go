@@ -43,7 +43,7 @@ func (e *Etcd) Close() error {
 	return nil
 }
 
-func (e *Etcd) InsertKV(ctx context.Context, key, val string, leaseID clientv3.LeaseID) error {
+func (e *Etcd) InsertKVNoExisted(ctx context.Context, key, val string, leaseID clientv3.LeaseID) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
 	defer cancelFunc()
 
@@ -67,6 +67,43 @@ func (e *Etcd) InsertKV(ctx context.Context, key, val string, leaseID clientv3.L
 		return ErrKeyAlreadyExists
 	}
 	return nil
+}
+
+func (e *Etcd) InsertKV(ctx context.Context, key, val string, leaseID clientv3.LeaseID) error {
+	//ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
+	//defer cancelFunc()
+	//
+	//var etcdRes *clientv3.TxnResponse
+	//var err error
+	//if leaseID != 0 {
+	//	etcdRes, err = e.client.Txn(ctx).
+	//		If(clientv3.Compare(clientv3.CreateRevision(key), ">", 0)).
+	//		Then(clientv3.OpPut(key, val, clientv3.WithLease(leaseID))).
+	//		//Else(clientv3.OpPut(key, val, clientv3.WithLease(leaseID))).
+	//		Commit()
+	//} else {
+	//	etcdRes, err = e.client.Txn(ctx).
+	//		If(clientv3.Compare(clientv3.CreateRevision(key), ">", 0)).
+	//		Then(clientv3.OpPut(key, val)).
+	//		//Else(clientv3.OpPut(key, val)).
+	//		Commit()
+	//}
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if !etcdRes.Succeeded {
+	//	return fmt.Errorf("InsertKV %s->%s", key, val)
+	//}
+	//return nil
+
+	var err error
+	if leaseID != 0 {
+		_, err = e.kv.Put(ctx, key, val, clientv3.WithLease(leaseID))
+	} else {
+		_, err = e.kv.Put(ctx, key, val)
+	}
+	return err
 }
 
 func (e *Etcd) GetWithPrefixKey(ctx context.Context, prefix string) ([]string, []string, error) {
@@ -128,6 +165,16 @@ func (e *Etcd) GrantLease(ttl int64) (clientv3.LeaseID, error) {
 
 func (e *Etcd) RevokeLease(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
 	return e.lease.Revoke(context.Background(), id)
+}
+
+func (e *Etcd) RenewLease(ctx context.Context, id clientv3.LeaseID) error {
+	if id != 0 {
+		ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
+		defer cancelFunc()
+		_, err := e.lease.KeepAliveOnce(ctx, id)
+		return err
+	}
+	return ErrEtcdLeaseNotFound
 }
 
 //func (etcd *Etcd) Watch(key string, cb func(*clientv3.Event)) error {

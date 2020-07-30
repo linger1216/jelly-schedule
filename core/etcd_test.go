@@ -20,7 +20,7 @@ func InitEtcd() *Etcd {
 func TestEtcd(t *testing.T) {
 	e := InitEtcd()
 	id, err := e.GrantLease(5)
-	err = e.InsertKV(context.Background(), "/ttl", "val", id)
+	err = e.InsertKVNoExisted(context.Background(), "/ttl", "val", id)
 	if err != nil {
 		panic(err)
 	}

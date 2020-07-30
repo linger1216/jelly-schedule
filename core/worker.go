@@ -7,7 +7,6 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasttemplate"
-	"log"
 	"os"
 	"time"
 )
@@ -16,7 +15,7 @@ var (
 	WorkerPrefix     = `/schedule/worker`
 	EtcdWorkerFormat = fasttemplate.New(WorkerPrefix+`/{Name}`, "{", "}")
 	EtcdLeaderKey    = `/schedule/leader`
-	TTL              = int64(5)
+	TTL              = int64(10)
 )
 
 type WorkerStats struct {
@@ -40,6 +39,16 @@ func LeaderKey() string {
 	return EtcdLeaderKey
 }
 
+func MarshalLeader(w *WorkerStats) ([]byte, error) {
+	return []byte(w.Name), nil
+}
+
+func UnMarshalLeader(buf []byte) (*WorkerStats, error) {
+	s := &WorkerStats{}
+	s.Name = string(buf)
+	return s, nil
+}
+
 func MarshalWorker(w *WorkerStats) ([]byte, error) {
 	return jsoniter.ConfigFastest.Marshal(w)
 }
@@ -54,10 +63,11 @@ func UnMarshalWorker(buf []byte) (*WorkerStats, error) {
 }
 
 type Worker struct {
-	stats    *WorkerStats
-	etcd     *Etcd
-	leaderId clientv3.LeaseID
-	ticker   *time.Ticker
+	stats         *WorkerStats
+	etcd          *Etcd
+	leaderLeaseId clientv3.LeaseID
+	roleLeaseId   clientv3.LeaseID
+	ticker        *time.Ticker
 }
 
 func NewWorker(name string, discover *Etcd) *Worker {
@@ -70,7 +80,7 @@ func NewWorker(name string, discover *Etcd) *Worker {
 	// 一上来就发起选举, 万一中了呢?
 	// 当前监视leader的动作还没有产生, 这时候主动发起一次选举
 	// 给自己确定角色
-	err := ret.startElection()
+	err := ret.tryElection()
 	if err != nil {
 		panic(err)
 	}
@@ -81,62 +91,110 @@ func NewWorker(name string, discover *Etcd) *Worker {
 		panic(err)
 	}
 
+	// 自身也作为worker节点
+	err = ret.register()
+	if err != nil {
+		panic(err)
+	}
+
+	// 续租
 	// run ticker by TTL/2
 	// 1. keep alive lease if leader
 	// 2. keep alive lease if worker
 	// 3. update stats if worker
 	ticker := time.NewTicker(time.Duration(TTL/2) * time.Second)
-
-	go func() {
-		for {
-			l.Debugf("worker %s", ret.Stats())
-			time.Sleep(time.Second * 3)
-		}
-	}()
+	ret.ticker = ticker
+	go ret.handleTicker()
 	return ret
 }
 
-func (w *Worker) xxx() {
+func (w *Worker) handleTicker() {
 	for {
 		select {
 		case <-w.ticker.C:
-		default:
+			// worker register
+			err := w.register()
+			if err != nil {
+				l.Debugf("register err:%s", err.Error())
+			}
+			// keep alive lease if worker
+			if err := w.etcd.RenewLease(context.Background(), w.roleLeaseId); err != nil {
+				l.Debugf("renew worker lease err:%s", err.Error())
+			} else {
+				l.Debugf("renew worker lease ok")
+			}
+			// keep alive lease if leader
+			if w.leaderLeaseId > 0 {
+				if err := w.etcd.RenewLease(context.Background(), w.leaderLeaseId); err != nil {
+					l.Debugf("renew leader lease err:%s", err.Error())
+				} else {
+					l.Debugf("renew leader lease ok")
+				}
+			}
 		}
 	}
 }
 
-func (w *Worker) startElection() error {
-	if w.leaderId > 0 {
-		_, err := w.etcd.RevokeLease(w.leaderId)
+func (w *Worker) register() error {
+	if w.roleLeaseId == 0 {
+		roleLeaseId, err := w.etcd.GrantLease(TTL)
 		if err != nil {
 			return err
 		}
-		w.leaderId = 0
+		w.roleLeaseId = roleLeaseId
 	}
-
-	leaderId, err := w.etcd.GrantLease(TTL)
-	if err != nil {
-		return err
-	}
-
 	jsonBuf, _ := MarshalWorker(w.stats)
-	err = w.etcd.InsertKV(context.Background(), LeaderKey(), string(jsonBuf), leaderId)
+	return w.etcd.InsertKV(context.Background(), WorkerKey(w.stats.Name), string(jsonBuf), w.roleLeaseId)
+}
+
+func (w *Worker) tryElection() error {
+	if w.stats.Role == Leader {
+		return nil
+	}
+
+	// 不是leader如果id
+	if w.leaderLeaseId > 0 {
+		_, err := w.etcd.RevokeLease(w.leaderLeaseId)
+		if err != nil {
+			return err
+		}
+		w.leaderLeaseId = 0
+	}
+
+	if w.leaderLeaseId == 0 {
+		leaderId, err := w.etcd.GrantLease(TTL)
+		if err != nil {
+			return err
+		}
+		w.leaderLeaseId = leaderId
+	}
+
+	jsonBuf, _ := MarshalLeader(w.stats)
+	err := w.etcd.InsertKVNoExisted(context.Background(), LeaderKey(), string(jsonBuf), w.leaderLeaseId)
 	if err != nil {
 		// 发生了错误, 无论是真实的错误, 还是已经选举出来了leader
 		// 无论如何, 为此准备的lease不起作用了, 随即释放掉
-		_, _ = w.etcd.RevokeLease(leaderId)
+		_, _ = w.etcd.RevokeLease(w.leaderLeaseId)
+		w.leaderLeaseId = 0
 		if err == ErrKeyAlreadyExists {
-			// 已经有了leader
+			//l.Debugf("try election leader already exists")
 			w.changeRole(Follower)
 			return nil
 		} else {
-			// 发生了错误
+			//l.Debugf("try election err:%s", err.Error())
 			return err
 		}
 	} else {
-		// 保留leader Id
-		w.leaderId = leaderId
+		//l.Debugf("try election be leader")
 		w.changeRole(Leader)
+	}
+
+	if w.stats.Role != Leader {
+		_, err := w.etcd.RevokeLease(w.leaderLeaseId)
+		if err != nil {
+			return err
+		}
+		w.leaderLeaseId = 0
 	}
 	return nil
 }
@@ -145,7 +203,7 @@ func (w *Worker) watchLeader() error {
 	return w.etcd.WatchWithPrefix(EtcdLeaderKey, func(event *clientv3.Event) error {
 		switch event.Type {
 		case mvccpb.PUT:
-			ws, err := UnMarshalWorker(event.Kv.Value)
+			ws, err := UnMarshalLeader(event.Kv.Value)
 			if err != nil {
 				return err
 			}
@@ -156,8 +214,7 @@ func (w *Worker) watchLeader() error {
 			}
 		case mvccpb.DELETE:
 			time.Sleep(time.Second)
-			l.Debugf("need election leader again")
-			_ = w.startElection()
+			_ = w.tryElection()
 		}
 		return nil
 	})
