@@ -1,64 +1,103 @@
 package core
 
-
 import (
 	"context"
 	"github.com/gorilla/mux"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
+	"strings"
 )
 
-type getWorkerListRequest struct{}
+type getJobListRequest struct{}
 
-type getWorkerListResponse struct {
-	WorkerStats []*JobStats `json:"workStats"`
+type getJobListResponse struct {
+	JobStats []*JobStats `json:"jobStats"`
 }
 
-func decodeGetWorkerListRequest(r *http.Request) (interface{}, error) {
+func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
 	pathParams := mux.Vars(r)
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &getWorkerListRequest{}, nil
+	return &getJobListRequest{}, nil
 }
 
-func (w *scheduleAPI) getWorkerList(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*getWorkerListRequest)
+func (w *scheduleAPI) getJobList(ctx context.Context, req interface{}) (interface{}, error) {
+	request, ok := req.(*getJobListRequest)
 	if !ok {
 		return nil, ErrorBadRequest
 	}
 
 	_ = request
 
-	_, v, err := w.etcd.GetWithPrefixKey(ctx, WorkerPrefix)
+	_, v, err := w.etcd.GetWithPrefixKey(ctx, JobPrefix)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &getWorkerListResponse{}
+	resp := &getJobListResponse{}
 	for i := range v {
-		stats := &WorkerStats{}
+		stats := &JobStats{}
 		err = jsoniter.ConfigFastest.Unmarshal([]byte(v[i]), stats)
 		if err != nil {
 			return nil, err
 		}
-		resp.WorkerStats = append(resp.WorkerStats, stats)
+		resp.JobStats = append(resp.JobStats, stats)
 	}
 
 	return resp, nil
 }
 
-type Resp struct {
-	ID   string
-	Name string
+//type Resp struct {
+//	ID   string
+//	Name string
+//}
+//
+//func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
+//
+//	resp := &Resp{
+//		ID:   "ghhghg",
+//		Name: "kknjn",
+//	}
+//
+//	_ = encodeHTTPGenericResponse(w, resp)
+//}
+
+type getJobRequest struct {
+	ids []string
 }
 
-func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
+type getJobResponse struct {
+	JobStats []*JobStats `json:"jobStats"`
+}
 
-	resp := &Resp{
-		ID:   "ghhghg",
-		Name: "kknjn",
+func decodeGetJobRequest(r *http.Request) (interface{}, error) {
+	pathParams := mux.Vars(r)
+	_ = pathParams
+	queryParams := r.URL.Query()
+	_ = queryParams
+	return &getJobRequest{
+		ids: strings.Split(pathParams["ids"], ","),
+	}, nil
+}
+
+func (w *scheduleAPI) getJob(ctx context.Context, req interface{}) (interface{}, error) {
+	request, ok := req.(*getJobRequest)
+	if !ok {
+		return nil, ErrorBadRequest
 	}
-
-	_ = encodeHTTPGenericResponse(w, resp)
+	resp := &getJobResponse{}
+	for i := range request.ids {
+		v, err := w.etcd.Get(ctx, JobPrefix+"/"+request.ids[i])
+		if err != nil {
+			return nil, err
+		}
+		stats := &JobStats{}
+		err = jsoniter.ConfigFastest.Unmarshal(v, stats)
+		if err != nil {
+			return nil, err
+		}
+		resp.JobStats = append(resp.JobStats, stats)
+	}
+	return resp, nil
 }

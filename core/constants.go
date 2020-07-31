@@ -12,5 +12,5 @@ var (
 	//ErrInsertKV  = errors.New("insert kv error")
 
 	// api
-	ErrorBadRequest = NewApiError(http.StatusBadRequest, "StatusBadRequest")
+	ErrorBadRequest = newApiError(http.StatusBadRequest, "StatusBadRequest")
 )

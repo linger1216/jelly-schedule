@@ -10,23 +10,23 @@ type Header interface {
 	Headers() http.Header
 }
 
-type ApiError struct {
+type apiError struct {
 	code int
 	msg  string
 }
 
-func NewApiError(code int, msg string) *ApiError {
-	return &ApiError{code: code, msg: msg}
+func newApiError(code int, msg string) *apiError {
+	return &apiError{code: code, msg: msg}
 }
 
-func (a *ApiError) Error() string {
+func (a *apiError) Error() string {
 	return a.msg
 }
 
-func (a *ApiError) RuntimeError() {
+func (a *apiError) RuntimeError() {
 	panic("implement me")
 }
 
-func (a *ApiError) StatusCode() int {
+func (a *apiError) StatusCode() int {
 	return a.code
 }

@@ -1,1 +1,6 @@
-go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379 --port 23808
+
+rm -fr build
+mkdir -p build/bin
+
+go build -o build/bin/api cmd/api/main.go
+go build -o build/bin/echo-job example/echo-job/server

@@ -1,5 +1,16 @@
 # jelly-schedule
 
+### linux
+env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o api_x cmd/api/main.go
+
+
+### pprof
+go tool pprof -http=:6060 --seconds 30 http://localhost:6060
+
+
+go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379 --port 23808
+
+
 
 ## 设计概念
 
@@ -67,3 +78,6 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 
 /schedule/worker/ip -> worker node (不使用lease实现, 使用定时器TTL/2, 尝试实现以下)
 /schedule/leader -> worker node (使用lease实现)
+
+
+

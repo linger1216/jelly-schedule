@@ -177,6 +177,20 @@ func (e *Etcd) RenewLease(ctx context.Context, id clientv3.LeaseID) error {
 	return ErrEtcdLeaseNotFound
 }
 
+func (e *Etcd) Get(ctx context.Context, key string) (value []byte, err error) {
+	var getResponse *clientv3.GetResponse
+	ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
+	defer cancelFunc()
+	if getResponse, err = e.kv.Get(ctx, key); err != nil {
+		return
+	}
+	if len(getResponse.Kvs) == 0 {
+		return
+	}
+	value = getResponse.Kvs[0].Value
+	return
+}
+
 //func (etcd *Etcd) Watch(key string, cb func(*clientv3.Event)) error {
 //	watcher := clientv3.NewWatcher(etcd.client)
 //	watchCh := watcher.Watch(context.Background(), key)
