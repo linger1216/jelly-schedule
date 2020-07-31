@@ -1,0 +1,8 @@
+GET http://localhost:23808/schedule/job
+Accept: application/json
+
+###
+
+
+GET http://localhost:23808/schedule/job/1289087596667867136
+Accept: application/json

@@ -1,1 +1,0 @@
-go tool pprof -http=:6060 --seconds 30 http://localhost:6060

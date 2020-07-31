@@ -1,1 +1,0 @@
-go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379
