@@ -68,6 +68,7 @@ type Worker struct {
 	leaderLeaseId clientv3.LeaseID
 	roleLeaseId   clientv3.LeaseID
 	ticker        *time.Ticker
+	api           *scheduleAPI
 }
 
 func NewWorker(name string, discover *Etcd) *Worker {
@@ -105,6 +106,9 @@ func NewWorker(name string, discover *Etcd) *Worker {
 	ticker := time.NewTicker(time.Duration(TTL/2) * time.Second)
 	ret.ticker = ticker
 	go ret.handleTicker()
+
+	// api
+	ret.api = NewScheduleAPI(discover)
 	return ret
 }
 

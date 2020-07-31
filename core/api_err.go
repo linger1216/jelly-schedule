@@ -2,10 +2,6 @@ package core
 
 import "net/http"
 
-var (
-	ErrorBadRequest = NewApiError(http.StatusBadRequest, "StatusBadRequest")
-)
-
 type StatusCoder interface {
 	StatusCode() int
 }

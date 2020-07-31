@@ -15,9 +15,17 @@ import (
 
 import _ "net/http/pprof"
 
+// todo
+
+const (
+	DefaultAPIPort = 35744
+)
+
+// 172.3.0.122:2379
 var (
-	name = kingpin.Flag("name", "worker name").String()
-	etcd = kingpin.Flag("etcd", "etcd address").Default("172.3.0.122:2379").String()
+	etcd      = kingpin.Flag("etcd", "etcd address").Required().String()
+	port      = kingpin.Flag("port", "api port").Default("0").Int()
+	debugPort = kingpin.Flag("debugPort", "debug port").Default("0").Int()
 )
 
 func init() {
@@ -26,13 +34,10 @@ func init() {
 }
 
 func main() {
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	if len(*name) == 0 {
-		*name = utils.GetHost()
+	if *debugPort > 0 {
+		go func() {
+			log.Println(http.ListenAndServe(fmt.Sprintf(":%d", *debugPort), nil))
+		}()
 	}
 
 	end := make(chan error)
@@ -40,8 +45,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	core.NewWorker(*name, etcd)
+	api := core.NewScheduleAPI(etcd)
+
+	if *port == 0 {
+		p, err := utils.GetFreePort()
+		if err != nil {
+			p = DefaultAPIPort
+		}
+		*port = p
+	}
+
+	go api.Start(*port)
 	go interruptHandler(end)
+
+	fmt.Printf("schedule api run :%d", *port)
 	<-end
 }
 

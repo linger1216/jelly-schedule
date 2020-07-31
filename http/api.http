@@ -1,0 +1,4 @@
+GET http://localhost:35744/schedule/worker
+Accept: application/json
+
+###
