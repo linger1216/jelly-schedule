@@ -3,22 +3,17 @@
 ### linux
 env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o api_x cmd/api/main.go
 
-
 ### pprof
 go tool pprof -http=:6060 --seconds 30 http://localhost:6060
-
 
 go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379 --port 23808
 
 
-
 ## 设计概念
-
 ### 调度:
 - cron (定时调度)
 - fixed (cron不支持的调度时间)
 > 由于Crontab必须被60整除，如果需要每隔40分钟执行一次调度，则Cron无法支持。Fixed rate专门用来做定期轮询，可以解决该问题，且表达式简单，但不支持秒级别
-
 
 - api (user自定义触发)
 - replay (回放)
@@ -58,9 +53,7 @@ go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379 --port 23808
 - 分片模式, 还要想下 todo
 
 
-命名空间
-
-
+### 命名空间
 概念
 - worker leader
 所有worker只有1台

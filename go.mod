@@ -15,7 +15,10 @@ require (
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/rpc v1.2.0
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.10
+	github.com/lib/pq v1.8.0
+	github.com/linger1216/go-pipeline v0.0.0-20200331130805-f510dd84fc5d
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/scylladb/termtables v1.0.0

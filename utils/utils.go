@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
+	"unsafe"
 )
 
 func GetExecFilename() string {
@@ -147,4 +151,128 @@ func GetFreePorts(count int) ([]int, error) {
 		ports = append(ports, l.Addr().(*net.TCPAddr).Port)
 	}
 	return ports, nil
+}
+
+func ValueInject(start int, count int) string {
+	var ret bytes.Buffer
+	ret.WriteByte('(')
+	for i := 1; i <= count; i++ {
+		ret.WriteByte('$')
+		ret.WriteString(Int64ToString(int64(start + i)))
+		if i != count {
+			ret.WriteByte(',')
+		}
+	}
+	ret.WriteByte(')')
+	return ret.String()
+}
+
+func PathExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
+}
+
+type Page struct {
+	Start uint64
+	Size  uint64
+}
+
+func SplitPage(pageSize, count uint64) []*Page {
+	allPage := uint64(math.Ceil(float64(count) / float64(pageSize)))
+	ret := make([]*Page, 0)
+	if pageSize >= count {
+		ret = append(ret, &Page{
+			Start: 0,
+			Size:  count,
+		})
+	} else {
+		for i := uint64(0); i < allPage-1; i++ {
+			ret = append(ret, &Page{
+				Start: i * pageSize,
+				Size:  pageSize,
+			})
+		}
+		ret = append(ret, &Page{
+			Start: (allPage - 1) * pageSize,
+			Size:  count - (allPage-1)*pageSize,
+		})
+	}
+	return ret
+}
+
+func UInt64ToString(n uint64) string {
+	return strconv.FormatUint(uint64(n), 10)
+}
+
+func Decimal(value float64) float64 {
+	return math.Round(value*1000000) / 1000000
+}
+func Int64ToString(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
+func StringToUint64(s string) uint64 {
+	ret, _ := strconv.ParseUint(s, 10, 64)
+	return ret
+}
+
+func StringToInt64(s string) int64 {
+	ret, _ := strconv.ParseInt(s, 10, 64)
+	return ret
+}
+
+func FloatToString(f float64) string {
+	return strconv.FormatFloat(f, 'f', 6, 64)
+}
+
+func StringToFloat(s string) float64 {
+	ret, _ := strconv.ParseFloat(s, 64)
+	return ret
+}
+
+func LnglatValid(lng, lat float64) bool {
+	return ValidLng(lng) && ValidLat(lat)
+}
+
+func ValidLng(lng float64) bool {
+	return lng >= -180.0 && lng <= 180.0
+}
+
+func ValidLat(lat float64) bool {
+	return lat <= 90.0 && lat >= -90.0
+}
+
+func Str2bytes(s string) []byte {
+	x := (*[2]uintptr)(unsafe.Pointer(&s))
+	h := [3]uintptr{x[0], x[1], x[1]}
+	return *(*[]byte)(unsafe.Pointer(&h))
+}
+
+func Bytes2str(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func CondSql(first bool) string {
+	if first {
+		return " where"
+	}
+	return " and"
+}
+
+func ArrayToSqlIn(ids ...string) string {
+	var buffer bytes.Buffer
+	for _, v := range ids {
+		buffer.WriteString("'")
+		buffer.WriteString(v)
+		buffer.WriteString("'")
+		buffer.WriteString(",")
+	}
+	temp := buffer.String()
+	return temp[:len(temp)-1]
 }

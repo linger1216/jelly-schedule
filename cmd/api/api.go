@@ -2,18 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-)
 
-import _ "net/http/pprof"
+	"github.com/linger1216/jelly-schedule/core"
+	"github.com/linger1216/jelly-schedule/utils"
+	"gopkg.in/alecthomas/kingpin.v2"
+
+	_ "net/http/pprof"
+)
 
 // todo
 
@@ -45,7 +46,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	api := core.NewScheduleAPI(etcd)
+	api := core.NewScheduleAPI(etcd, nil)
 
 	if *port == 0 {
 		p, err := utils.GetFreePort()

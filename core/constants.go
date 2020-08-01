@@ -9,8 +9,8 @@ var (
 	// etcd
 	ErrKeyAlreadyExists  = errors.New("key already exists")
 	ErrEtcdLeaseNotFound = errors.New("lease not found")
-	//ErrInsertKV  = errors.New("insert kv error")
 
 	// api
-	ErrorBadRequest = newApiError(http.StatusBadRequest, "StatusBadRequest")
+	ErrorBadRequest  = newApiError(http.StatusBadRequest, "StatusBadRequest")
+	ErrorInvalidPara = newApiError(http.StatusBadRequest, "ErrorInvalidPara")
 )

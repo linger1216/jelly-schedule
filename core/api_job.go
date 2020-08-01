@@ -2,11 +2,27 @@ package core
 
 import (
 	"context"
-	"github.com/gorilla/mux"
-	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
+	jsoniter "github.com/json-iterator/go"
 )
+
+type jobAPI struct {
+	etcd *Etcd
+}
+
+func NewJobAPI(etcd *Etcd) *jobAPI {
+	/*
+		api.createWorkflowFilter = pipe.NewStraightPipeline(false, "create asset").
+		Append("validCreateAssets", ret.validCreateAssets).
+		Append("validCreateAssets", ret.cleanUpsertAssets).
+		Append("execUpsertAssets", ret.execUpsertAssets).
+		Append("execUpsertAssets", ret.createAssetsResponse)
+	*/
+	return &jobAPI{etcd: etcd}
+}
 
 type getJobListRequest struct{}
 
@@ -22,7 +38,7 @@ func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
 	return &getJobListRequest{}, nil
 }
 
-func (w *scheduleAPI) getJobList(ctx context.Context, req interface{}) (interface{}, error) {
+func (w *jobAPI) getJobList(ctx context.Context, req interface{}) (interface{}, error) {
 	request, ok := req.(*getJobListRequest)
 	if !ok {
 		return nil, ErrorBadRequest
@@ -48,21 +64,6 @@ func (w *scheduleAPI) getJobList(ctx context.Context, req interface{}) (interfac
 	return resp, nil
 }
 
-//type Resp struct {
-//	ID   string
-//	Name string
-//}
-//
-//func ArticlesCategoryHandler(w http.ResponseWriter, r *http.Request) {
-//
-//	resp := &Resp{
-//		ID:   "ghhghg",
-//		Name: "kknjn",
-//	}
-//
-//	_ = encodeHTTPGenericResponse(w, resp)
-//}
-
 type getJobRequest struct {
 	ids []string
 }
@@ -81,7 +82,7 @@ func decodeGetJobRequest(r *http.Request) (interface{}, error) {
 	}, nil
 }
 
-func (w *scheduleAPI) getJob(ctx context.Context, req interface{}) (interface{}, error) {
+func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, error) {
 	request, ok := req.(*getJobRequest)
 	if !ok {
 		return nil, ErrorBadRequest

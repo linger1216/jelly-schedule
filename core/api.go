@@ -4,11 +4,42 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/cors"
-	"net/http"
 )
+
+type StatusCoder interface {
+	StatusCode() int
+}
+
+type Header interface {
+	Headers() http.Header
+}
+
+type apiError struct {
+	code int
+	msg  string
+}
+
+func newApiError(code int, msg string) *apiError {
+	return &apiError{code: code, msg: msg}
+}
+
+func (a *apiError) Error() string {
+	return a.msg
+}
+
+func (a *apiError) RuntimeError() {
+	panic("implement me")
+}
+
+func (a *apiError) StatusCode() int {
+	return a.code
+}
 
 type HandleFunc func(w http.ResponseWriter, r *http.Request)
 type DecodeRequestFunc func(r *http.Request) (interface{}, error)
@@ -60,47 +91,52 @@ func HandleFuncWrapper(dec DecodeRequestFunc, e Endpoint, enc encodeResponseFunc
 }
 
 type scheduleAPI struct {
-	etcd *Etcd
+	job     *jobAPI
+	worflow *workFlowAPI
 }
 
-func NewScheduleAPI(etcd *Etcd) *scheduleAPI {
-	return &scheduleAPI{etcd: etcd}
+func NewScheduleAPI(etcd *Etcd, db *sqlx.DB) *scheduleAPI {
+	api := &scheduleAPI{job: NewJobAPI(etcd), worflow: NewWorkflowAPI(db)}
+	return api
 }
 
 func (w *scheduleAPI) Start(port int) error {
 	m := mux.NewRouter()
 
-	// 获得Job
+	// 获得Job List
 	m.HandleFunc("/schedule/job",
-		HandleFuncWrapper(decodeGetJobListRequest, w.getJobList, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeGetJobListRequest, w.job.getJobList, encodeHTTPGenericResponse)).
 		Methods("GET")
 
-
+	// 获得Job
 	m.HandleFunc("/schedule/job/{ids}",
-		HandleFuncWrapper(decodeGetJobRequest, w.getJob, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeGetJobRequest, w.job.getJob, encodeHTTPGenericResponse)).
 		Methods("GET")
 
-	//
-	//// 获得leader
-	//m.HandleFunc("/schedule/leader", ArticlesCategoryHandler).Methods("GET")
-	//
-	//// 获得所有job
-	//m.HandleFunc("/schedule/job", ArticlesCategoryHandler).Methods("GET")
-	//
-	//// 获得job
-	//m.HandleFunc("/schedule/job/{id}", ArticlesCategoryHandler).Methods("GET")
-	//
-	//// 删除job
-	//m.HandleFunc("/schedule/job/{id}", ArticlesCategoryHandler).Methods("DELETE")
-	//
-	//// 获得所有workflow
-	//m.HandleFunc("/schedule/workflow", ArticlesCategoryHandler).Methods("GET")
-	//
-	//// 获得workflow
-	//m.HandleFunc("/schedule/workflow/{id}", ArticlesCategoryHandler).Methods("GET")
-	//
-	//// 删除workflow
-	//m.HandleFunc("/schedule/workflow/{id}", ArticlesCategoryHandler).Methods("DELETE")
+	// 创建工作流
+	m.HandleFunc("/schedule/workflow",
+		HandleFuncWrapper(decodeCreateWorkflowRequest, w.worflow.CreateWorkflow, encodeHTTPGenericResponse)).
+		Methods("POST")
+
+	// 删除工作流
+	m.HandleFunc("/schedule/workflow",
+		HandleFuncWrapper(decodeDeleteWorkflowRequest, w.worflow.DeleteWorkflow, encodeHTTPGenericResponse)).
+		Methods("DELETE")
+
+	// 更改工作流
+	m.HandleFunc("/schedule/workflow",
+		HandleFuncWrapper(decodeUpdateWorkflowRequest, w.worflow.UpdateWorkflow, encodeHTTPGenericResponse)).
+		Methods("PUT")
+
+	// List 工作流
+	m.HandleFunc("/schedule/workflow",
+		HandleFuncWrapper(decodeListWorkflowRequest, w.worflow.ListWorkflow, encodeHTTPGenericResponse)).
+		Methods("GET")
+
+	// get 工作流
+	m.HandleFunc("/schedule/workflow/{ids}",
+		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPGenericResponse)).
+		Methods("GET")
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), cors.AllowAll().Handler(m))
 }
