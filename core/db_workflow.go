@@ -18,19 +18,21 @@ var (
       id                    varchar primary key,
       name                  varchar,
       description           varchar,
-      job_ids               varchar[],
+			job_ids               varchar[],
+			cron                  varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
-	WorkflowTableColumn        = `id,name,description,job_ids,create_time,update_time`
+	WorkflowTableColumn        = `id,name,description,job_ids,cron,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
-	WorkflowTableOnConflictDDL = `
+	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
   do update set 
   name = excluded.name, 
   description = excluded.description, 
-  job_ids = excluded.job_ids, 
-  update_time = GREATEST(asset.update_time, excluded.update_time);`
+	job_ids = excluded.job_ids, 
+	cron = excluded.cron, 
+  update_time = GREATEST(%s.update_time, excluded.update_time);`, WorkflowTableName)
 )
 
 func createWorkflowTableSql() string {
@@ -65,7 +67,7 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 		}
 
 		values = append(values, utils.ValueInject(i, WorkflowTableColumnSize))
-		args = append(args, v.Id, v.Name, v.description, pq.Array(v.JobIds), createTime, updateTime)
+		args = append(args, v.Id, v.Name, v.Description, pq.Array(v.JobIds), v.Cron, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,
 		strings.Join(values, ","), WorkflowTableOnConflictDDL)
@@ -73,7 +75,7 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 }
 
 func getWorkflowSql(ids []string) (string, []interface{}) {
-	query := fmt.Sprintf("select * from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
+	query := fmt.Sprintf("select id,name,description,array_to_string(job_ids, ',', ',') as job_ids, cron, create_time, update_time from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
 	return query, nil
 }
 

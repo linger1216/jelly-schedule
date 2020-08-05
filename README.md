@@ -74,3 +74,6 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 
 
 
+
+./api --etcd 172.3.0.122:2379 --postgres "postgres://lid.guan:@localhost:15432/schedule?sslmode=disable" --port 23808
+

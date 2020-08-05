@@ -4,9 +4,11 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"github.com/linger1216/jelly-schedule/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -20,13 +22,10 @@ type workFlowAPI struct {
 }
 
 func NewWorkflowAPI(db *sqlx.DB) *workFlowAPI {
-	/*
-		api.createWorkflowFilter = pipe.NewStraightPipeline(false, "create asset").
-		Append("validCreateAssets", ret.validCreateAssets).
-		Append("validCreateAssets", ret.cleanUpsertAssets).
-		Append("execUpsertAssets", ret.execUpsertAssets).
-		Append("execUpsertAssets", ret.createAssetsResponse)
-	*/
+	_, err := db.Exec(CreateWorkflowTableDDL)
+	if err != nil {
+		panic(err)
+	}
 	return &workFlowAPI{db: db}
 }
 
@@ -35,7 +34,7 @@ type CreateWorkflowRequest struct {
 }
 
 type CreateWorkflowResponse struct {
-	Ids []string
+	Ids []string `json:"ids"`
 }
 
 func decodeCreateWorkflowRequest(r *http.Request) (interface{}, error) {
@@ -99,22 +98,15 @@ func (w *workFlowAPI) CreateWorkflow(ctx context.Context, req interface{}) (inte
 	for i := range in {
 		resp.Ids = append(resp.Ids, in[i].Id)
 	}
-
 	return resp, nil
 }
 
 type GetWorkflowRequest struct {
-	Header       int
-	Names        []string
-	Descriptions []string
-	StartTime    int64
-	EndTime      int64
-	CurrentPage  uint64
-	PageSize     uint64
+	Ids []string
 }
 
 type GetWorkflowResponse struct {
-	WorkflowStats []string `json:"WorkflowStats"`
+	Workflows []*WorkFlow `json:"workflows"`
 }
 
 func decodeGetWorkflowRequest(r *http.Request) (interface{}, error) {
@@ -122,18 +114,82 @@ func decodeGetWorkflowRequest(r *http.Request) (interface{}, error) {
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &GetWorkflowRequest{}, nil
+
+	req := &GetWorkflowRequest{}
+	arr := pathParams["ids"]
+	req.Ids = strings.Split(arr, ",")
+	return req, nil
 }
 
 func (w *workFlowAPI) GetWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*GetWorkflowRequest)
+	in, ok := req.(*GetWorkflowRequest)
 	if !ok {
 		return nil, ErrorBadRequest
 	}
 
-	_ = request
 	resp := &GetWorkflowResponse{}
+	resp.Workflows = make([]*WorkFlow, len(in.Ids))
+	actualIds := make([]string, 0, len(in.Ids))
+	for i := range in.Ids {
+		if len(in.Ids[i]) > 0 {
+			actualIds = append(actualIds, in.Ids[i])
+		} else {
+			resp.Workflows[i] = &WorkFlow{}
+		}
+	}
+
+	query, args := getWorkflowSql(actualIds)
+	l.Debug(query)
+
+	workflows, err := w.queryWorkflow(query, args)
+	if err != nil {
+		return nil, err
+	}
+
+	pos := 0
+	for i := range resp.Workflows {
+		if resp.Workflows[i] == nil {
+			if pos < len(workflows) && workflows[pos] != nil {
+				resp.Workflows[i] = workflows[pos]
+				pos++
+			} else {
+				resp.Workflows[i] = &WorkFlow{}
+			}
+		}
+	}
 	return resp, nil
+}
+
+func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
+	ret := &WorkFlow{}
+	if v, ok := m[prefix+"id"]; ok {
+		ret.Id = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"name"]; ok {
+		ret.Name = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"description"]; ok {
+		ret.Description = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"job_ids"]; ok {
+		ret.JobIds = strings.Split(utils.ToString(v), ",")
+	}
+
+	if v, ok := m[prefix+"cron"]; ok {
+		ret.Cron = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"create_time"]; ok {
+		ret.CreateTime = utils.ToInt64(v)
+	}
+
+	if v, ok := m[prefix+"update_time"]; ok {
+		ret.UpdateTime = utils.ToInt64(v)
+	}
+	return ret, nil
 }
 
 type UpdateWorkflowRequest struct {
@@ -151,6 +207,7 @@ type UpdateWorkflowResponse struct {
 }
 
 func decodeUpdateWorkflowRequest(r *http.Request) (interface{}, error) {
+	l.Debug("decodeUpdateWorkflowRequest")
 	pathParams := mux.Vars(r)
 	_ = pathParams
 	queryParams := r.URL.Query()
@@ -182,7 +239,7 @@ type ListWorkflowRequest struct {
 }
 
 type ListWorkflowResponse struct {
-	WorkflowStats []string `json:"WorkflowStats"`
+	WorkflowStats []string `json:"workflowStats"`
 }
 
 func decodeListWorkflowRequest(r *http.Request) (interface{}, error) {
@@ -217,10 +274,11 @@ type DeleteWorkflowRequest struct {
 }
 
 type DeleteWorkflowResponse struct {
-	WorkflowStats []string `json:"WorkflowStats"`
+	WorkflowStats []string `json:"workflowStats"`
 }
 
 func decodeDeleteWorkflowRequest(r *http.Request) (interface{}, error) {
+	l.Debug("decodeDeleteWorkflowRequest")
 	pathParams := mux.Vars(r)
 	_ = pathParams
 	queryParams := r.URL.Query()
@@ -235,8 +293,30 @@ func (w *workFlowAPI) DeleteWorkflow(ctx context.Context, req interface{}) (inte
 	}
 
 	_ = request
-
 	resp := &DeleteWorkflowResponse{}
-
 	return resp, nil
+}
+
+// private
+func (w *workFlowAPI) queryWorkflow(query string, args []interface{}) ([]*WorkFlow, error) {
+	rows, err := w.db.Queryx(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	ret := make([]*WorkFlow, 0)
+	for rows.Next() {
+		line := make(map[string]interface{})
+		err = rows.MapScan(line)
+		if err != nil {
+			return nil, err
+		}
+		if tc, err := transWorkflow("", line); err == nil && tc != nil {
+			ret = append(ret, tc)
+		}
+	}
+	if len(ret) == 0 {
+		return nil, nil
+	}
+	return ret, nil
 }

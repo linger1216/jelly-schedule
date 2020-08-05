@@ -1,3 +1,6 @@
+
+
+###
 GET http://localhost:23808/schedule/job
 Accept: application/json
 
@@ -6,3 +9,18 @@ Accept: application/json
 
 GET http://localhost:23808/schedule/job/1289087596667867136
 Accept: application/json
+
+###
+
+
+
+POST http://localhost:23808/schedule/workflow
+content-type: application/json
+[
+  {
+    "id":"3808",
+    "name":"lid"
+  }
+]
+
+###

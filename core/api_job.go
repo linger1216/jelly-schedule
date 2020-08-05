@@ -14,13 +14,6 @@ type jobAPI struct {
 }
 
 func NewJobAPI(etcd *Etcd) *jobAPI {
-	/*
-		api.createWorkflowFilter = pipe.NewStraightPipeline(false, "create asset").
-		Append("validCreateAssets", ret.validCreateAssets).
-		Append("validCreateAssets", ret.cleanUpsertAssets).
-		Append("execUpsertAssets", ret.execUpsertAssets).
-		Append("execUpsertAssets", ret.createAssetsResponse)
-	*/
 	return &jobAPI{etcd: etcd}
 }
 
