@@ -20,13 +20,14 @@ var (
       description           varchar,
 			job_ids               varchar,
 			cron                  varchar,
+			mode                  varchar,
 			state                 varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
 	//WorkflowTableSelectColumn  = `id,name,description,array_to_string(, ',', ',') as job_ids,cron,create_time,update_time`
 	WorkflowTableSelectColumn  = `*`
-	WorkflowTableColumn        = `id,name,description,job_ids,cron,state,create_time,update_time`
+	WorkflowTableColumn        = `id,name,description,job_ids,cron,mode,state,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
@@ -35,6 +36,7 @@ var (
   description = excluded.description, 
 	job_ids = excluded.job_ids,
 	cron = excluded.cron,
+	mode = excluded.mode,
   state = excluded.state,
   update_time = GREATEST(%s.update_time, excluded.update_time);`, WorkflowTableName)
 )
@@ -75,7 +77,7 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.State, createTime, updateTime)
+		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Mode, v.State, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,
 		strings.Join(values, ","), WorkflowTableOnConflictDDL)
