@@ -199,39 +199,64 @@ func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 }
 
 type UpdateWorkflowRequest struct {
-	Header       int
-	Names        []string
-	Descriptions []string
-	StartTime    int64
-	EndTime      int64
-	CurrentPage  uint64
-	PageSize     uint64
+	WorkFlows []*WorkFlow `json:"workflows"`
 }
 
 type UpdateWorkflowResponse struct {
-	WorkflowStats []string `json:"WorkflowStats"`
 }
 
 func decodeUpdateWorkflowRequest(r *http.Request) (interface{}, error) {
-	l.Debug("decodeUpdateWorkflowRequest")
+	req := &UpdateWorkflowRequest{}
+	// to support gzip input
+	var reader io.ReadCloser
+	switch r.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(r.Body)
+		defer reader.Close()
+		if err != nil {
+			return nil, newApiError(http.StatusBadRequest, "failed to read the gzip content")
+		}
+	default:
+		reader = r.Body
+	}
+
+	buf, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, newApiError(http.StatusBadRequest, "cannot read body of http request")
+	}
+	if len(buf) > 0 {
+		if err = jsoniter.ConfigFastest.Unmarshal(buf, &req.WorkFlows); err != nil {
+			const size = 8196
+			if len(buf) > size {
+				buf = buf[:size]
+			}
+			return nil, newApiError(http.StatusBadRequest, fmt.Sprintf("request body '%s': cannot parse non-json request body", buf))
+		}
+	}
 	pathParams := mux.Vars(r)
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &UpdateWorkflowRequest{}, nil
+	return req, nil
 }
 
 func (w *workFlowAPI) UpdateWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*UpdateWorkflowRequest)
-	if !ok {
-		return nil, ErrorBadRequest
+	in, ok := req.(*UpdateWorkflowRequest)
+	if !ok || len(in.WorkFlows) == 0 {
+		return nil, ErrorInvalidPara
+	}
+	query, args, err := upsertWorkflowSql(in.WorkFlows)
+	if err != nil {
+		return nil, err
 	}
 
-	_ = request
+	l.Debugf(query)
+	_, err = w.db.Exec(query, args...)
+	if err != nil {
+		return nil, err
+	}
 
-	resp := &UpdateWorkflowResponse{}
-
-	return resp, nil
+	return &UpdateWorkflowResponse{}, nil
 }
 
 type ListWorkflowRequest struct {

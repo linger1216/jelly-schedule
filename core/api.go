@@ -125,17 +125,17 @@ func (w *scheduleAPI) Start(port int) error {
 		HandleFuncWrapper(decodeGetJobRequest, w.job.getJob, encodeHTTPGenericResponse)).
 		Methods("GET")
 
-	// 创建工作流
+	// create工作流
 	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeCreateWorkflowRequest, w.worflow.CreateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("POST")
 
-	// 删除工作流
+	// del工作流
 	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeDeleteWorkflowRequest, w.worflow.DeleteWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("DELETE")
 
-	// 更改工作流
+	// update工作流
 	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeUpdateWorkflowRequest, w.worflow.UpdateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("PUT")
