@@ -6,6 +6,7 @@ type WorkFlow struct {
 	Description string     `json:"description,omitempty"`
 	JobIds      [][]string `json:"jobIds,omitempty"`
 	Cron        string     `json:"cron,omitempty"`
+	Para        string     `json:"para"`
 	State       string     `json:"state,omitempty"`
 	Mode        string     `json:"mode,omitempty"`
 	CreateTime  int64      `json:"createTime,omitempty"`

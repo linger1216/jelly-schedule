@@ -195,6 +195,10 @@ func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 		ret.Cron = utils.ToString(v)
 	}
 
+	if v, ok := m[prefix+"para"]; ok {
+		ret.Para = utils.ToString(v)
+	}
+
 	if v, ok := m[prefix+"state"]; ok {
 		ret.State = utils.ToString(v)
 	}
