@@ -23,6 +23,7 @@ var (
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
+	WorkflowTableSelectColumn  = `id,name,description,array_to_string(job_ids, ',', ',') as job_ids, cron, create_time, update_time`
 	WorkflowTableColumn        = `id,name,description,job_ids,cron,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
@@ -75,7 +76,7 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 }
 
 func getWorkflowSql(ids []string) (string, []interface{}) {
-	query := fmt.Sprintf("select id,name,description,array_to_string(job_ids, ',', ',') as job_ids, cron, create_time, update_time from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
+	query := fmt.Sprintf("select %s from %s where id in (%s);", WorkflowTableSelectColumn, WorkflowTableName, utils.ArrayToSqlIn(ids...))
 	return query, nil
 }
 
@@ -86,17 +87,17 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 	if in.Header > 0 {
 		buffer.WriteString(fmt.Sprintf("select count(1) from %s", WorkflowTableName))
 	} else {
-		buffer.WriteString(fmt.Sprintf("select * from %s", WorkflowTableName))
+		buffer.WriteString(fmt.Sprintf("select %s from %s", WorkflowTableSelectColumn, WorkflowTableName))
 	}
 
 	if len(in.Names) > 0 {
-		query := fmt.Sprintf("%s place_id in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Names...))
+		query := fmt.Sprintf("%s name in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Names...))
 		buffer.WriteString(query)
 		firstCond = false
 	}
 
 	if len(in.Descriptions) > 0 {
-		query := fmt.Sprintf("%s user_id in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Descriptions...))
+		query := fmt.Sprintf("%s description in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Descriptions...))
 		buffer.WriteString(query)
 		firstCond = false
 	}
@@ -111,6 +112,10 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 		query := fmt.Sprintf(" offset %d limit %d", in.CurrentPage*in.PageSize, in.PageSize)
 		buffer.WriteString(query)
 	}
-
 	return buffer.String(), nil
+}
+
+func deleteWorkflowSql(ids []string) (string, []interface{}) {
+	query := fmt.Sprintf("delete from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
+	return query, nil
 }

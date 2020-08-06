@@ -45,6 +45,18 @@ type HandleFunc func(w http.ResponseWriter, r *http.Request)
 type DecodeRequestFunc func(r *http.Request) (interface{}, error)
 type encodeResponseFunc func(w http.ResponseWriter, response interface{}) error
 
+type KV struct {
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+func writeHeader(w http.ResponseWriter, kvs []*KV) error {
+	for i := range kvs {
+		w.Header().Set(kvs[i].Key, kvs[i].Value)
+	}
+	return nil
+}
+
 func encodeHTTPGenericResponse(w http.ResponseWriter, response interface{}) error {
 	encoder := jsoniter.ConfigFastest.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
@@ -115,27 +127,32 @@ func (w *scheduleAPI) Start(port int) error {
 
 	// 创建工作流
 	m.HandleFunc("/schedule/workflow",
-		HandleFuncWrapper(decodeCreateWorkflowRequest, w.worflow.CreateWorkflow, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeCreateWorkflowRequest, w.worflow.CreateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("POST")
 
 	// 删除工作流
 	m.HandleFunc("/schedule/workflow",
-		HandleFuncWrapper(decodeDeleteWorkflowRequest, w.worflow.DeleteWorkflow, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeDeleteWorkflowRequest, w.worflow.DeleteWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("DELETE")
 
 	// 更改工作流
 	m.HandleFunc("/schedule/workflow",
-		HandleFuncWrapper(decodeUpdateWorkflowRequest, w.worflow.UpdateWorkflow, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeUpdateWorkflowRequest, w.worflow.UpdateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("PUT")
 
 	// List 工作流
 	m.HandleFunc("/schedule/workflow",
-		HandleFuncWrapper(decodeListWorkflowRequest, w.worflow.ListWorkflow, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeListWorkflowRequest, w.worflow.ListWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("GET")
+
+	// HEAD 工作流
+	m.HandleFunc("/schedule/workflow",
+		HandleFuncWrapper(decodeListWorkflowRequestHeader, w.worflow.ListWorkflow, encodeHTTPWorkflowResponse)).
+		Methods("HEAD")
 
 	// get 工作流
 	m.HandleFunc("/schedule/workflow/{ids}",
-		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("GET")
 
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), cors.AllowAll().Handler(m))

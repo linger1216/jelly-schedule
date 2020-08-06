@@ -8,12 +8,18 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/linger1216/go-pipeline/pipe"
+)
+
+const (
+	HeadCountKey = "X-Total-Count"
 )
 
 type workFlowAPI struct {
@@ -102,7 +108,7 @@ func (w *workFlowAPI) CreateWorkflow(ctx context.Context, req interface{}) (inte
 }
 
 type GetWorkflowRequest struct {
-	Ids []string
+	Ids []string `json:"ids"`
 }
 
 type GetWorkflowResponse struct {
@@ -229,71 +235,166 @@ func (w *workFlowAPI) UpdateWorkflow(ctx context.Context, req interface{}) (inte
 }
 
 type ListWorkflowRequest struct {
-	Header       int
-	Names        []string
-	Descriptions []string
-	StartTime    int64
-	EndTime      int64
-	CurrentPage  uint64
-	PageSize     uint64
+	Header       int      `json:"header"`
+	Names        []string `json:"names"`
+	Descriptions []string `json:"descriptions"`
+	StartTime    int64    `json:"startTime"`
+	EndTime      int64    `json:"endTime"`
+	CurrentPage  uint64   `json:"currentPage"`
+	PageSize     uint64   `json:"pageSize"`
 }
 
 type ListWorkflowResponse struct {
-	WorkflowStats []string `json:"workflowStats"`
+	Headers   []*KV       `json:"headers,omitempty"`
+	Workflows []*WorkFlow `json:"workflows,omitempty"`
+}
+
+func decodeListWorkflowRequestHeader(r *http.Request) (interface{}, error) {
+	pathParams := mux.Vars(r)
+	_ = pathParams
+
+	queryParams := r.URL.Query()
+	_ = queryParams
+
+	req := decodeListQueryParams(nil, queryParams)
+	req.Header = 1
+	return req, nil
 }
 
 func decodeListWorkflowRequest(r *http.Request) (interface{}, error) {
 	pathParams := mux.Vars(r)
 	_ = pathParams
+
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &ListWorkflowRequest{}, nil
+
+	req := decodeListQueryParams(nil, queryParams)
+	req.Header = 0
+	return req, nil
 }
 
 func (w *workFlowAPI) ListWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*ListWorkflowRequest)
+	in, ok := req.(*ListWorkflowRequest)
 	if !ok {
 		return nil, ErrorBadRequest
 	}
 
-	_ = request
+	if in.PageSize == 0 {
+		in.PageSize = 100
+	}
 
 	resp := &ListWorkflowResponse{}
+	query, args := listAssetsSql(in)
+	l.Debugf(query)
 
+	if in.Header > 0 {
+		count := int64(0)
+		err := w.db.Get(&count, query, args...)
+		if err != nil {
+			return nil, err
+		}
+		if count == 0 {
+			return nil, ErrNotFound
+		}
+		resp.Headers = append(resp.Headers, &KV{
+			Key:   HeadCountKey,
+			Value: utils.Int64ToString(count),
+		})
+	} else {
+		ret, err := w.queryWorkflow(query, args)
+		if err != nil {
+			return nil, err
+		}
+		resp.Workflows = ret
+	}
 	return resp, nil
 }
 
+func decodeListQueryParams(req *ListWorkflowRequest, queryParams url.Values) *ListWorkflowRequest {
+	if req == nil {
+		req = &ListWorkflowRequest{}
+	}
+
+	if str, ok := queryParams["header"]; ok && len(str) > 0 {
+		size, _ := strconv.Atoi(str[0])
+		req.Header = size
+	}
+
+	if arr, ok := queryParams["names"]; ok {
+		req.Names = make([]string, 0, len(arr))
+		for i := range arr {
+			if len(arr[i]) > 0 {
+				req.Names = append(req.Names, arr[i])
+			}
+		}
+	}
+
+	if arr, ok := queryParams["descriptions"]; ok {
+		req.Descriptions = make([]string, 0, len(arr))
+		for i := range arr {
+			if len(arr[i]) > 0 {
+				req.Descriptions = append(req.Descriptions, arr[i])
+			}
+		}
+	}
+
+	if str, ok := queryParams["start_time"]; ok && len(str) > 0 {
+		req.StartTime = utils.StringToInt64(str[0])
+	}
+	if str, ok := queryParams["end_time"]; ok && len(str) > 0 {
+		req.EndTime = utils.StringToInt64(str[0])
+	}
+
+	if str, ok := queryParams["current_page"]; ok && len(str) > 0 {
+		page, _ := strconv.Atoi(str[0])
+		req.CurrentPage = uint64(page)
+	}
+
+	if str, ok := queryParams["page_size"]; ok && len(str) > 0 {
+		size, _ := strconv.Atoi(str[0])
+		req.PageSize = uint64(size)
+	}
+
+	return req
+}
+
 type DeleteWorkflowRequest struct {
-	Header       int
-	Names        []string
-	Descriptions []string
-	StartTime    int64
-	EndTime      int64
-	CurrentPage  uint64
-	PageSize     uint64
+	Ids []string `json:"ids"`
 }
 
 type DeleteWorkflowResponse struct {
-	WorkflowStats []string `json:"workflowStats"`
 }
 
 func decodeDeleteWorkflowRequest(r *http.Request) (interface{}, error) {
-	l.Debug("decodeDeleteWorkflowRequest")
 	pathParams := mux.Vars(r)
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &DeleteWorkflowRequest{}, nil
+
+	req := &DeleteWorkflowRequest{}
+	arr := pathParams["ids"]
+	req.Ids = strings.Split(arr, ",")
+	return req, nil
 }
 
 func (w *workFlowAPI) DeleteWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*DeleteWorkflowRequest)
+	in, ok := req.(*DeleteWorkflowRequest)
 	if !ok {
 		return nil, ErrorBadRequest
 	}
 
-	_ = request
 	resp := &DeleteWorkflowResponse{}
+	if len(in.Ids) == 0 {
+		return resp, nil
+	}
+
+	query, args := deleteWorkflowSql(in.Ids)
+	l.Debug(query)
+	_, err := w.db.Exec(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
 	return resp, nil
 }
 
@@ -319,4 +420,21 @@ func (w *workFlowAPI) queryWorkflow(query string, args []interface{}) ([]*WorkFl
 		return nil, nil
 	}
 	return ret, nil
+}
+
+func encodeHTTPWorkflowResponse(w http.ResponseWriter, response interface{}) error {
+	encoder := jsoniter.ConfigFastest.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	switch x := response.(type) {
+	case *CreateWorkflowResponse:
+		return encoder.Encode(x.Ids)
+	case *GetWorkflowResponse:
+		return encoder.Encode(x.Workflows)
+	case *ListWorkflowResponse:
+		if len(x.Headers) > 0 {
+			return writeHeader(w, x.Headers)
+		}
+		return encoder.Encode(x.Workflows)
+	}
+	return encoder.Encode(response)
 }

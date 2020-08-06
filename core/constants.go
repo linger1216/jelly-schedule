@@ -13,4 +13,5 @@ var (
 	// api
 	ErrorBadRequest  = newApiError(http.StatusBadRequest, "StatusBadRequest")
 	ErrorInvalidPara = newApiError(http.StatusBadRequest, "ErrorInvalidPara")
+	ErrNotFound      = errors.New("not found")
 )
