@@ -28,7 +28,7 @@ type workFlowAPI struct {
 }
 
 func NewWorkflowAPI(db *sqlx.DB) *workFlowAPI {
-	_, err := db.Exec(CreateWorkflowTableDDL)
+	_, err := db.Exec(createWorkflowTableSql())
 	if err != nil {
 		panic(err)
 	}
@@ -181,11 +181,18 @@ func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 	}
 
 	if v, ok := m[prefix+"job_ids"]; ok {
-		ret.JobIds = strings.Split(utils.ToString(v), ",")
+		err := jsoniter.ConfigFastest.Unmarshal([]byte(utils.ToString(v)), &ret.JobIds)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if v, ok := m[prefix+"cron"]; ok {
 		ret.Cron = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"state"]; ok {
+		ret.State = utils.ToString(v)
 	}
 
 	if v, ok := m[prefix+"create_time"]; ok {

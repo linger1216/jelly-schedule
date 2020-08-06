@@ -3,10 +3,10 @@ package core
 import (
 	"bytes"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/linger1216/jelly-schedule/utils"
 	"github.com/linger1216/jelly-schedule/utils/snowflake"
 )
@@ -18,21 +18,24 @@ var (
       id                    varchar primary key,
       name                  varchar,
       description           varchar,
-			job_ids               varchar[],
+			job_ids               varchar,
 			cron                  varchar,
+			state                 varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
-	WorkflowTableSelectColumn  = `id,name,description,array_to_string(job_ids, ',', ',') as job_ids, cron, create_time, update_time`
-	WorkflowTableColumn        = `id,name,description,job_ids,cron,create_time,update_time`
+	//WorkflowTableSelectColumn  = `id,name,description,array_to_string(, ',', ',') as job_ids,cron,create_time,update_time`
+	WorkflowTableSelectColumn  = `*`
+	WorkflowTableColumn        = `id,name,description,job_ids,cron,state,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
-  do update set 
-  name = excluded.name, 
+  do update set
+  name = excluded.name,
   description = excluded.description, 
-	job_ids = excluded.job_ids, 
-	cron = excluded.cron, 
+	job_ids = excluded.job_ids,
+	cron = excluded.cron,
+  state = excluded.state,
   update_time = GREATEST(%s.update_time, excluded.update_time);`, WorkflowTableName)
 )
 
@@ -68,7 +71,11 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 		}
 
 		values = append(values, utils.ValueInject(i, WorkflowTableColumnSize))
-		args = append(args, v.Id, v.Name, v.Description, pq.Array(v.JobIds), v.Cron, createTime, updateTime)
+		jsonBuf, err := jsoniter.ConfigFastest.Marshal(v.JobIds)
+		if err != nil {
+			return "", nil, err
+		}
+		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,
 		strings.Join(values, ","), WorkflowTableOnConflictDDL)
