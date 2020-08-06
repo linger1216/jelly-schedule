@@ -75,7 +75,7 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, createTime, updateTime)
+		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.State, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,
 		strings.Join(values, ","), WorkflowTableOnConflictDDL)
