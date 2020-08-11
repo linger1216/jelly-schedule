@@ -12,35 +12,6 @@ import (
 	"github.com/rs/cors"
 )
 
-type StatusCoder interface {
-	StatusCode() int
-}
-
-type Header interface {
-	Headers() http.Header
-}
-
-type apiError struct {
-	code int
-	msg  string
-}
-
-func newApiError(code int, msg string) *apiError {
-	return &apiError{code: code, msg: msg}
-}
-
-func (a *apiError) Error() string {
-	return a.msg
-}
-
-func (a *apiError) RuntimeError() {
-	panic("implement me")
-}
-
-func (a *apiError) StatusCode() int {
-	return a.code
-}
-
 type HandleFunc func(w http.ResponseWriter, r *http.Request)
 type DecodeRequestFunc func(r *http.Request) (interface{}, error)
 type encodeResponseFunc func(w http.ResponseWriter, response interface{}) error
@@ -105,14 +76,28 @@ func HandleFuncWrapper(dec DecodeRequestFunc, e Endpoint, enc encodeResponseFunc
 type scheduleAPI struct {
 	job     *jobAPI
 	worflow *workFlowAPI
+	config  *HttpConfig
 }
 
-func NewScheduleAPI(etcd *Etcd, db *sqlx.DB) *scheduleAPI {
-	api := &scheduleAPI{job: NewJobAPI(etcd), worflow: NewWorkflowAPI(db)}
+type HttpConfig struct {
+	Port      int `json:"port" yaml:"port" `
+	PProfPort int `json:"pprofPort" yaml:"pprofPort" `
+}
+
+func NewScheduleAPI(etcd *Etcd, db *sqlx.DB, config *HttpConfig) *scheduleAPI {
+	api := &scheduleAPI{job: NewJobAPI(etcd), worflow: NewWorkflowAPI(db), config: config}
 	return api
 }
 
-func (w *scheduleAPI) Start(port int) error {
+func (w *scheduleAPI) Start() error {
+
+	if w.config.PProfPort > 0 {
+		go func() {
+			l.Debugf("pprof start: %d", w.config.PProfPort)
+			http.ListenAndServe(fmt.Sprintf(":%d", w.config.PProfPort), nil)
+		}()
+	}
+
 	m := mux.NewRouter()
 
 	// 获得Job List
@@ -155,5 +140,6 @@ func (w *scheduleAPI) Start(port int) error {
 		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("GET")
 
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), cors.AllowAll().Handler(m))
+	l.Debugf("api start: %d", w.config.Port)
+	return http.ListenAndServe(fmt.Sprintf("api start: %d", w.config.Port), cors.AllowAll().Handler(m))
 }

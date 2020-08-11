@@ -1,0 +1,15 @@
+
+# schedule config
+
+etcd:
+  uri: 172.3.0.122:2379
+  timeout: 5
+
+postgres:
+  uri: postgres://lid.guan:@localhost:15432/schedule?sslmode=disable
+  maxIdle: 10
+  maxOpen: 100
+
+http:
+  port: 23808
+  pprofPort: 51216

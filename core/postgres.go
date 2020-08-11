@@ -1,4 +1,4 @@
-package postgres
+package core
 
 import (
 	"fmt"
@@ -12,25 +12,25 @@ import (
 )
 
 type PostgresConfig struct {
-	Url     string `json:"url"`
-	MaxIdle int    `json:"maxIdle" default:"10"`
-	MaxOpen int    `json:"maxOpen" default:"100"`
+	Uri     string `yaml:"uri"`
+	MaxIdle int    `yaml:"maxIdle" default:"10"`
+	MaxOpen int    `yaml:"maxOpen" default:"100"`
 }
 
 func NewPostgres(conf *PostgresConfig) *sqlx.DB {
-	uri, err := url.Parse(conf.Url)
+	uri, err := url.Parse(conf.Uri)
 	if err != nil {
-		panic(fmt.Sprintf("parse %s err:%s", conf.Url, err.Error()))
+		panic(fmt.Sprintf("parse %s err:%s", conf.Uri, err.Error()))
 	}
 
-	poll, err := sqlx.Open(uri.Scheme, conf.Url)
+	poll, err := sqlx.Open(uri.Scheme, conf.Uri)
 	if err != nil {
-		panic(fmt.Sprintf("open %s err:%s", conf.Url, err.Error()))
+		panic(fmt.Sprintf("open %s err:%s", conf.Uri, err.Error()))
 	}
 
 	err = poll.Ping()
 	if err != nil {
-		panic(fmt.Sprintf("ping %s err:%s", conf.Url, err.Error()))
+		panic(fmt.Sprintf("ping %s err:%s", conf.Uri, err.Error()))
 	}
 	poll.SetMaxIdleConns(conf.MaxIdle)
 	poll.SetMaxOpenConns(conf.MaxOpen)

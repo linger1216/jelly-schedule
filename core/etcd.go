@@ -3,8 +3,14 @@ package core
 import (
 	"context"
 	"github.com/coreos/etcd/clientv3"
+	"strings"
 	"time"
 )
+
+type EtcdConfig struct {
+	Uri     string `yaml:"uri"`
+	Timeout int    `json:"timeout" yaml:"timeout" `
+}
 
 type Etcd struct {
 	endpoints []string
@@ -14,8 +20,12 @@ type Etcd struct {
 	lease     clientv3.Lease
 }
 
+func NewEtcd(config *EtcdConfig) *Etcd {
+	return newEtcd(strings.Split(config.Uri, ","), time.Duration(config.Timeout)*time.Second)
+}
+
 // create a etcd
-func NewEtcd(endpoints []string, timeout time.Duration) (*Etcd, error) {
+func newEtcd(endpoints []string, timeout time.Duration) *Etcd {
 	var client *clientv3.Client
 	var err error
 
@@ -25,7 +35,7 @@ func NewEtcd(endpoints []string, timeout time.Duration) (*Etcd, error) {
 	}
 
 	if client, err = clientv3.New(conf); err != nil {
-		return nil, err
+		panic(err)
 	}
 	etcd := &Etcd{
 		endpoints: endpoints,
@@ -34,7 +44,7 @@ func NewEtcd(endpoints []string, timeout time.Duration) (*Etcd, error) {
 		timeout:   timeout,
 		lease:     clientv3.NewLease(client),
 	}
-	return etcd, nil
+	return etcd
 }
 
 func (e *Etcd) Close() error {

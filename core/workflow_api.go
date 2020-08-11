@@ -180,10 +180,6 @@ func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 		ret.Description = utils.ToString(v)
 	}
 
-	if v, ok := m[prefix+"mode"]; ok {
-		ret.Mode = utils.ToString(v)
-	}
-
 	if v, ok := m[prefix+"job_ids"]; ok {
 		err := jsoniter.ConfigFastest.Unmarshal([]byte(utils.ToString(v)), &ret.JobIds)
 		if err != nil {

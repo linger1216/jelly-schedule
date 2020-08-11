@@ -2,32 +2,19 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"github.com/linger1216/jelly-schedule/core"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
-	"github.com/linger1216/jelly-schedule/utils/postgres"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	_ "net/http/pprof"
 )
 
-// todo
+const DefaultConfigFilename = "/etc/config/schedule_config.yaml"
 
-const (
-	DefaultAPIPort = 35744
-)
-
-// 172.3.0.122:2379
 var (
-	etcd            = kingpin.Flag("etcd", "etcd address").Required().String()
-	postgresAddress = kingpin.Flag("postgres", "postgres address").Required().String()
-	port            = kingpin.Flag("port", "api port").Default("0").Int()
-	debugPort       = kingpin.Flag("debugPort", "debug port").Default("0").Int()
+	configFilename = kingpin.Flag("conf", "config file name").Short('c').Default(DefaultConfigFilename).String()
 )
 
 func init() {
@@ -36,44 +23,19 @@ func init() {
 }
 
 func main() {
-	if *debugPort > 0 {
-		go func() {
-			fmt.Println(http.ListenAndServe(fmt.Sprintf(":%d", *debugPort), nil))
-		}()
-	}
-
-	end := make(chan error)
-
-	pg := postgres.NewPostgres(&postgres.PostgresConfig{
-		Url: *postgresAddress,
-	})
-
-	etcd, err := core.NewEtcd([]string{*etcd}, time.Duration(core.TTL)*time.Second)
+	config, err := core.LoadScheduleConfig(*configFilename)
 	if err != nil {
 		panic(err)
 	}
-
-	api := core.NewScheduleAPI(etcd, pg)
-
-	if *port == 0 {
-		p, err := utils.GetFreePort()
-		if err != nil {
-			p = DefaultAPIPort
-		}
-		*port = p
-	}
-
+	end := make(chan error)
+	pg := core.NewPostgres(&config.Postgres)
+	etcd := core.NewEtcd(&config.Etcd)
+	api := core.NewScheduleAPI(etcd, pg, &config.Http)
 	go func() {
-		err := api.Start(*port)
-		if err != nil {
-			panic(err)
-		}
+		api.Start()
 	}()
 	go interruptHandler(end)
-
-	fmt.Printf("schedule api run :%d", *port)
 	<-end
-
 	_ = etcd.Close()
 	_ = pg.Close()
 }

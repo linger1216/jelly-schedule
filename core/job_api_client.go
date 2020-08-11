@@ -7,8 +7,7 @@ import (
 	"net/http"
 )
 
-func getJobStatsFromRestful(port int) ([]*JobStats, error) {
-
+func ListJobStats() ([]*JobInfo, error) {
 	url := "/schedule/job/{ids}"
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -31,7 +30,7 @@ func getJobStatsFromRestful(port int) ([]*JobStats, error) {
 		return nil, err
 	}
 
-	ret := make([]*JobStats, 0)
+	ret := make([]*JobInfo, 0)
 	err = jsoniter.ConfigDefault.Unmarshal(content, &ret)
 	if err != nil {
 		return nil, err

@@ -3,40 +3,20 @@ package core
 import (
 	"context"
 	"github.com/coreos/etcd/clientv3"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/linger1216/jelly-schedule/utils"
 	"github.com/linger1216/jelly-schedule/utils/snowflake"
-	"github.com/scylladb/termtables"
 	"github.com/valyala/fasttemplate"
 	"os"
 	"time"
 )
 
+// 提供给用户使用, 内部会调用RPC, 抽象成服务
+// 并注册到etcd
 var (
 	JobPrefix = `/schedule/job`
 	JobFormat = fasttemplate.New(JobPrefix+`/{Id}`, "{", "}")
 	TTL       = int64(10)
 )
-
-type JobStats struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	ServicePath string `json:"servicePath"`
-	JobPath     string `json:"jobPath"`
-}
-
-func (w JobStats) String() string {
-	table := termtables.CreateTable()
-	table.AddHeaders("Field", "Value")
-	table.AddRow("Name", w.Name)
-	table.AddRow("Host", w.Host)
-	table.AddRow("Port", w.Port)
-	table.AddRow("ServicePath", w.ServicePath)
-	table.AddRow("JobPath", w.JobPath)
-	return table.Render()
-}
 
 func JobKey(id string) string {
 	s := JobFormat.ExecuteString(map[string]interface{}{
@@ -45,21 +25,8 @@ func JobKey(id string) string {
 	return s
 }
 
-func MarshalJobStats(j *JobStats) ([]byte, error) {
-	return jsoniter.ConfigFastest.Marshal(j)
-}
-
-func UnMarshalJobStats(buf []byte) (*JobStats, error) {
-	s := &JobStats{}
-	err := jsoniter.ConfigFastest.Unmarshal(buf, s)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
-}
-
 type JobServer struct {
-	stats   JobStats
+	stats   JobInfo
 	job     Job
 	etcd    *Etcd
 	leaseId clientv3.LeaseID
@@ -104,7 +71,7 @@ func NewJobServer(etcd *Etcd, job Job) *JobServer {
 		}
 	}()
 
-	l.Debugf("job %s started", ret.stats.Name)
+	l.Debugf("job %s started: %d", ret.stats.Name, port)
 	return ret
 }
 
@@ -129,7 +96,7 @@ func (w *JobServer) register() error {
 		}
 		w.leaseId = roleLeaseId
 	}
-	jsonBuf, _ := MarshalJobStats(&w.stats)
+	jsonBuf, _ := MarshalJobInfo(&w.stats)
 	return w.etcd.InsertKV(context.Background(), JobKey(w.stats.Id), string(jsonBuf), w.leaseId)
 }
 

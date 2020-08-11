@@ -20,7 +20,7 @@ func NewJobAPI(etcd *Etcd) *jobAPI {
 type getJobListRequest struct{}
 
 type getJobListResponse struct {
-	JobStats []*JobStats `json:"jobStats"`
+	JobStats []*JobInfo `json:"jobStats"`
 }
 
 func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
@@ -46,7 +46,7 @@ func (w *jobAPI) getJobList(ctx context.Context, req interface{}) (interface{}, 
 
 	resp := &getJobListResponse{}
 	for i := range v {
-		stats := &JobStats{}
+		stats := &JobInfo{}
 		err = jsoniter.ConfigFastest.Unmarshal([]byte(v[i]), stats)
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ type getJobRequest struct {
 }
 
 type getJobResponse struct {
-	JobStats []*JobStats `json:"jobStats"`
+	JobStats []*JobInfo `json:"jobStats"`
 }
 
 func decodeGetJobRequest(r *http.Request) (interface{}, error) {
@@ -86,7 +86,7 @@ func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, erro
 		if err != nil {
 			return nil, err
 		}
-		stats := &JobStats{}
+		stats := &JobInfo{}
 		err = jsoniter.ConfigFastest.Unmarshal(v, stats)
 		if err != nil {
 			return nil, err

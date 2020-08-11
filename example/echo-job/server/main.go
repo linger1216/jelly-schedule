@@ -5,19 +5,17 @@ import (
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 import _ "net/http/pprof"
 
+const DefaultConfigFilename = "/etc/config/schedule_config.yaml"
+
 var (
-	etcd  = kingpin.Flag("etcd", "etcd address").Required().String()
-	debug = kingpin.Flag("debug", "debug debug").Default("0").Int()
+	configFilename = kingpin.Flag("conf", "config file name").Short('c').Default(DefaultConfigFilename).String()
 )
 
 type EchoJob struct {
@@ -40,26 +38,19 @@ func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, 
 	return "ok", nil
 }
 
-
 func init() {
 	kingpin.Version("0.1.0")
 	kingpin.Parse()
 }
 
 func main() {
-	if *debug > 0 {
-		go func() {
-			log.Println(http.ListenAndServe(fmt.Sprintf(":%d", *debug), nil))
-		}()
-	}
-
-	end := make(chan error)
-	etcd, err := core.NewEtcd([]string{*etcd}, time.Duration(core.TTL)*time.Second)
+	config, err := core.LoadScheduleConfig(*configFilename)
 	if err != nil {
 		panic(err)
 	}
+	end := make(chan error)
+	etcd := core.NewEtcd(&config.Etcd)
 	core.NewJobServer(etcd, NewEchoJob())
-
 	go interruptHandler(end)
 	<-end
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
 	"os"
@@ -275,4 +276,14 @@ func ArrayToSqlIn(ids ...string) string {
 	}
 	temp := buffer.String()
 	return temp[:len(temp)-1]
+}
+
+func ReadFileContent(filename string) ([]byte, error) {
+	obj, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := ioutil.ReadAll(obj)
+	_ = obj.Close()
+	return buf, err
 }

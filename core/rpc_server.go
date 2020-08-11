@@ -9,6 +9,7 @@ import (
 	"net/http"
 )
 
+// 把Job封装成一个RPC服务
 const (
 	JsonRPCPath = `/rpc`
 )
@@ -31,10 +32,10 @@ func (j *JsonRPCService) Exec(r *http.Request, arg *Request, result *Response) e
 
 type JsonRPCServer struct {
 	job   Job
-	stats JobStats
+	stats JobInfo
 }
 
-func newJsonRPCServer(stats JobStats, job Job) *JsonRPCServer {
+func newJsonRPCServer(stats JobInfo, job Job) *JsonRPCServer {
 	return &JsonRPCServer{stats: stats, job: job}
 }
 
