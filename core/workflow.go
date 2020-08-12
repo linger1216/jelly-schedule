@@ -1,5 +1,11 @@
 package core
 
+const (
+	StateAvaiable  = "Avaiable"
+	StateExecuting = "Executing"
+	StateFinish    = "Finish"
+)
+
 type WorkFlow struct {
 	Id          string     `json:"id,omitempty"`
 	Name        string     `json:"name,omitempty"`

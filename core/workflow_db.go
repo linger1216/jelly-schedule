@@ -105,8 +105,8 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 		firstCond = false
 	}
 
-	if len(in.Descriptions) > 0 {
-		query := fmt.Sprintf("%s description in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Descriptions...))
+	if len(in.States) > 0 {
+		query := fmt.Sprintf("%s state in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.States...))
 		buffer.WriteString(query)
 		firstCond = false
 	}
@@ -127,4 +127,9 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 func deleteWorkflowSql(ids []string) (string, []interface{}) {
 	query := fmt.Sprintf("delete from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
 	return query, nil
+}
+
+// 行级锁
+func getWorkFLowForUpdate(state string, n int) string {
+	return fmt.Sprintf(`select * from %s where status = '%s' limit %d for update;`, WorkflowTableName, state, n)
 }

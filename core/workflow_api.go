@@ -271,13 +271,13 @@ func (w *workFlowAPI) UpdateWorkflow(ctx context.Context, req interface{}) (inte
 }
 
 type ListWorkflowRequest struct {
-	Header       int      `json:"header"`
-	Names        []string `json:"names"`
-	Descriptions []string `json:"descriptions"`
-	StartTime    int64    `json:"startTime"`
-	EndTime      int64    `json:"endTime"`
-	CurrentPage  uint64   `json:"currentPage"`
-	PageSize     uint64   `json:"pageSize"`
+	Header      int      `json:"header"`
+	Names       []string `json:"names"`
+	States      []string `json:"states"`
+	StartTime   int64    `json:"startTime"`
+	EndTime     int64    `json:"endTime"`
+	CurrentPage uint64   `json:"currentPage"`
+	PageSize    uint64   `json:"pageSize"`
 }
 
 type ListWorkflowResponse struct {
@@ -366,10 +366,10 @@ func decodeListQueryParams(req *ListWorkflowRequest, queryParams url.Values) *Li
 	}
 
 	if arr, ok := queryParams["descriptions"]; ok {
-		req.Descriptions = make([]string, 0, len(arr))
+		req.States = make([]string, 0, len(arr))
 		for i := range arr {
 			if len(arr[i]) > 0 {
-				req.Descriptions = append(req.Descriptions, arr[i])
+				req.States = append(req.States, arr[i])
 			}
 		}
 	}
