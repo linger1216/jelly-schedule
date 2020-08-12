@@ -25,6 +25,10 @@ func (e ParallelError) Error() string {
 	return fmt.Sprintf("%v%s", e.Final, suffix)
 }
 
+func (e ParallelError) Empty() bool {
+	return len(e.RawErrors) == 0
+}
+
 type ParallelJob struct {
 	jobs     []Job
 	progress *atomic.Int32
@@ -65,5 +69,9 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 	}
 	wg.Wait()
 	s.progress.CAS(int32(s.Progress()), 100)
-	return arr, parallelError
+
+	if !parallelError.Empty() {
+		return nil, parallelError
+	}
+	return arr, nil
 }

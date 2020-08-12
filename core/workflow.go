@@ -1,9 +1,9 @@
 package core
 
 const (
-	StateAvaiable  = "Avaiable"
-	StateExecuting = "Executing"
-	StateFinish    = "Finish"
+	StateAvaiable  = "avaiable"
+	StateExecuting = "executing"
+	StateFinish    = "finish"
 )
 
 type WorkFlow struct {
@@ -17,3 +17,8 @@ type WorkFlow struct {
 	CreateTime  int64      `json:"createTime,omitempty"`
 	UpdateTime  int64      `json:"updateTime,omitempty"`
 }
+
+// who
+// limit
+// shell Job
+// http Job

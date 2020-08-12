@@ -39,14 +39,19 @@ func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
 		}
 		l.Debugf("%s workflow response:%v", workflow.Name, resp)
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	// 再次运行确认没问题
+	e.schedule.Start()
+	return nil
 }
 
 func (e *Executor) handleTicker() {
 	for {
 		select {
 		case <-e.ticker.C:
-			l.Debugf("check workflow")
+			//l.Debugf("check workflow")
 			workFlows, err := e.getAvaiableWorkFLow(1)
 			if err != nil {
 				panic(err)
@@ -104,7 +109,7 @@ func (e *Executor) getAvaiableWorkFLow(n int) ([]*WorkFlow, error) {
 		return nil, err
 	}
 
-	l.Debug(query)
+	//l.Debug(query)
 	_, err = tx.Exec(query, args...)
 	if err != nil {
 		return nil, err
@@ -126,7 +131,7 @@ func (e *Executor) Exec(workFlow *WorkFlow) (interface{}, error) {
 	for _, jobJroup := range workFlow.JobIds {
 		jobs := make([]Job, 0)
 		for _, jobId := range jobJroup {
-			buf, err := e.etcd.Get(context.Background(), jobId)
+			buf, err := e.etcd.Get(context.Background(), JobKey(jobId))
 			if err != nil {
 				return nil, err
 			}

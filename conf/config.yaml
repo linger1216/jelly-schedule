@@ -13,3 +13,6 @@ postgres:
 http:
   port: 23808
   pprofPort: 51216
+
+executor:
+  interval: 10

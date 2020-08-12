@@ -34,8 +34,7 @@ func (e *EchoJob) Progress() int {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
-	fmt.Printf("echo:%s\n", req.(string))
-	return "ok", nil
+	return req.(string) + " -> ok", nil
 }
 
 func init() {

@@ -9,6 +9,7 @@ type ScheduleConfig struct {
 	Etcd     EtcdConfig
 	Postgres PostgresConfig
 	Http     HttpConfig
+	Executor ExecutorConfig
 }
 
 func LoadScheduleConfig(filename string) (*ScheduleConfig, error) {

@@ -131,5 +131,5 @@ func deleteWorkflowSql(ids []string) (string, []interface{}) {
 
 // 行级锁
 func getWorkFLowForUpdate(state string, n int) string {
-	return fmt.Sprintf(`select * from %s where status = '%s' limit %d for update;`, WorkflowTableName, state, n)
+	return fmt.Sprintf(`select * from %s where state = '%s' limit %d for update;`, WorkflowTableName, state, n)
 }
