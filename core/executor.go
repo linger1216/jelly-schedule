@@ -44,8 +44,12 @@ func (e *Executor) close() {
 }
 
 func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
+
+	// todo
+	// 这一块有点乱
+	// 需要重新设计
 	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
-		_, err := e.execByPolicy(workflow)
+		_, err := e.execByPolicy(nil, workflow)
 		state := StateFinish
 		if err != nil {
 			l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
@@ -65,7 +69,7 @@ func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
 
 		if workflowContext.stats.SuccessExecuteCount >= workflow.ExecuteLimit {
 			e.workFlowCron.Remove(workflowContext.entry)
-			workflowContext.
+			//workflowContext.
 			return
 		}
 
@@ -162,7 +166,7 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 		workFlows[i].State = StateExecuting
 	}
 
-	query, args, err := upsertWorkflowSql(workFlows)
+	query, args, err := upsertWorkflowSql(workFlows...)
 	if err != nil {
 		return nil, err
 	}
