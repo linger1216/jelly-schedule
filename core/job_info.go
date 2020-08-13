@@ -58,7 +58,7 @@ func NewDefaultJob(info *JobInfo) *DefaultJob {
 }
 
 func (e *DefaultJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	message, err := json.EncodeClientRequest("JsonRPCService.Exec", req)
+	message, err := json.EncodeClientRequest("JsonRPCService.exec", req)
 	if err != nil {
 		return nil, err
 	}

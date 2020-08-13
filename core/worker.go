@@ -13,9 +13,9 @@ package core
 //)
 //
 //var (
-//	WorkerPrefix     = `/schedule/worker`
+//	WorkerPrefix     = `/workFlowCron/worker`
 //	EtcdWorkerFormat = fasttemplate.New(WorkerPrefix+`/{Name}`, "{", "}")
-//	EtcdLeaderKey    = `/schedule/leader`
+//	EtcdLeaderKey    = `/workFlowCron/leader`
 //	TTL              = int64(10)
 //)
 //
@@ -68,7 +68,7 @@ package core
 //	etcd          *Etcd
 //	leaderLeaseId clientv3.LeaseID
 //	leaseId   clientv3.LeaseID
-//	ticker        *time.Ticker
+//	CheckWorkFlowTicker        *time.Ticker
 //}
 //
 //func NewWorker(name string, discover *Etcd) *Worker {
@@ -99,12 +99,12 @@ package core
 //	}
 //
 //	// 续租
-//	// run ticker by TTL/2
+//	// run CheckWorkFlowTicker by TTL/2
 //	// 1. keep alive lease if leader
 //	// 2. keep alive lease if worker
 //	// 3. update stats if worker
-//	ticker := time.NewTicker(time.Duration(TTL/2) * time.Second)
-//	ret.ticker = ticker
+//	CheckWorkFlowTicker := time.NewTicker(time.Duration(TTL/2) * time.Second)
+//	ret.CheckWorkFlowTicker = CheckWorkFlowTicker
 //	go ret.handleTicker()
 //
 //	return ret
@@ -113,7 +113,7 @@ package core
 //func (w *Worker) handleTicker() {
 //	for {
 //		select {
-//		case <-w.ticker.C:
+//		case <-w.CheckWorkFlowTicker.C:
 //			// worker register
 //			err := w.register()
 //			if err != nil {
@@ -233,5 +233,5 @@ package core
 //}
 //
 //func (w *Worker) Close() {
-//	w.ticker.Stop()
+//	w.CheckWorkFlowTicker.Stop()
 //}

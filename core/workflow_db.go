@@ -58,7 +58,7 @@ func createWorkflowTableSql() string {
 	return CreateWorkflowTableDDL
 }
 
-func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
+func upsertWorkflowSql(workflows ...*WorkFlow) (string, []interface{}, error) {
 	size := len(workflows)
 	if size == 0 {
 		return "", nil, nil
@@ -153,3 +153,5 @@ func getWorkFLowByExecutorBelongForUpdate(belong, state string, n int) string {
 	return fmt.Sprintf(`select * from %s where state = '%s and executor_belong = %s' limit %d for update;`,
 		WorkflowTableName, state, belong, n)
 }
+
+// helper

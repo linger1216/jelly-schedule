@@ -8,7 +8,7 @@ import (
 )
 
 func ListJobStats() ([]*JobInfo, error) {
-	url := "/schedule/job/{ids}"
+	url := "/workFlowCron/job/{ids}"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

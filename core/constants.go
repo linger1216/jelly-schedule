@@ -8,13 +8,15 @@ import (
 const (
 	StateAvaiable  = "avaiable"
 	StateExecuting = "executing"
+	StateFailed    = "failed"
 	StateFinish    = "finish"
 
 	ErrPolicyPanic  = "panic"
 	ErrPolicyIgnore = "ignore"
 	ErrPolicyRetry  = "retry"
 
-	ExecUnlimitCount = -1
+	ExecUnlimitCount  = -1
+	DefaultRetryCount = 3
 )
 
 var (

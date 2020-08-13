@@ -18,7 +18,7 @@ func main() {
 	url := "http://localhost:64008/rpc"
 	args := "hello jsonrpc"
 
-	message, err := json.EncodeClientRequest("JsonRPCService.Exec", args)
+	message, err := json.EncodeClientRequest("JsonRPCService.exec", args)
 	checkError(err)
 
 	resp, err := http.Post(url, "application/json", bytes.NewReader(message))

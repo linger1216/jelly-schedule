@@ -17,3 +17,12 @@ type WorkFlow struct {
 	CreateTime     int64  `json:"createTime,omitempty"`
 	UpdateTime     int64  `json:"updateTime,omitempty"`
 }
+
+type WorkFlowStats struct {
+	Id                   string
+	SuccessExecuteCount  int64
+	RetryExecuteCount    int64
+	FailedExecuteCount   int64
+	LastExecuteDuration  int64
+	TotalExecuteDuration int64
+}

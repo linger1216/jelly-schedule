@@ -13,7 +13,7 @@ import (
 // 提供给用户使用, 内部会调用RPC, 抽象成服务
 // 并注册到etcd
 var (
-	JobPrefix = `/schedule/job`
+	JobPrefix = `/workFlowCron/job`
 	JobFormat = fasttemplate.New(JobPrefix+`/{Id}`, "{", "}")
 	TTL       = int64(10)
 )

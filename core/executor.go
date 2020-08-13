@@ -8,67 +8,126 @@ import (
 )
 
 type ExecutorConfig struct {
-	Interval int `json:"interval" yaml:"interval"`
+	Name                  string `json:"name" yaml:"name" `
+	CheckWorkFlowInterval int    `json:"checkWorkFlowInterval" yaml:"checkWorkFlowInterval" `
 }
 
 type Executor struct {
-	etcd     *Etcd
-	db       *sqlx.DB
-	ticker   *time.Ticker
-	schedule *cron.Cron
+	name string
+	etcd *Etcd
+	db   *sqlx.DB
+	// 用于检查是否有可用的workflow
+	CheckWorkFlowTicker *time.Ticker
+	// 用于执行workflow具体的cron
+	workFlowCron       *cron.Cron
+	executorContextMap map[string]*ExecutorContext
+}
+
+type ExecutorContext struct {
+	stats *WorkFlowStats
+	entry cron.EntryID
 }
 
 func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e := &Executor{etcd: etcd, db: db}
-	ticker := time.NewTicker(time.Duration(config.Interval) * time.Second)
-	e.ticker = ticker
+	ticker := time.NewTicker(time.Duration(config.CheckWorkFlowInterval) * time.Second)
+	e.CheckWorkFlowTicker = ticker
+	e.workFlowCron = cron.New()
+	e.name = config.Name
+	e.executorContextMap = make(map[string]*ExecutorContext)
 	go e.handleTicker()
-	e.schedule = cron.New()
 	return e
 }
 
 func (e *Executor) close() {
-	e.schedule.Stop()
+	e.workFlowCron.Stop()
 }
 
 func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
-	_, err := e.schedule.AddFunc(workflow.Cron, func() {
-		resp, err := e.Exec(workflow)
+	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
+		_, err := e.execByPolicy(workflow)
+		state := StateFinish
 		if err != nil {
 			l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
+			state = StateFailed
 		}
-		l.Debugf("%s workflow response:%v", workflow.Name, resp)
+		err = changeWorkFlowState(e.db, state, workflow)
+
+		if err != nil {
+			l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
+		}
+		l.Debugf("%s workflow run success", workflow.Name)
+
+		workflowContext, ok := e.executorContextMap[workflow.Id]
+		if !ok {
+			panic("executorContextMap type invalid")
+		}
+
+		if workflowContext.stats.SuccessExecuteCount >= workflow.ExecuteLimit {
+			e.workFlowCron.Remove(workflowContext.entry)
+			workflowContext.
+			return
+		}
+
 	})
+
 	if err != nil {
 		return err
 	}
+
+	e.executorContextMap[workflow.Id] = &ExecutorContext{
+		stats: &WorkFlowStats{
+			Id: workflow.Id,
+		},
+		entry: entryId,
+	}
+
 	// 再次运行确认没问题
-	e.schedule.Start()
+	e.workFlowCron.Start()
 	return nil
 }
 
 func (e *Executor) handleTicker() {
-	for {
-		select {
-		case <-e.ticker.C:
-			//l.Debugf("check workflow")
-			workFlows, err := e.getAvaiableWorkFLow(1)
+
+	addCronWorkFlow := func(query string) bool {
+		if len(query) == 0 {
+			return false
+		}
+		workFlows, err := e.getAvaiableWorkFLow(query)
+		if err != nil {
+			panic(err)
+		}
+		if len(workFlows) == 0 {
+			return false
+		}
+		for i := range workFlows {
+			err := e.addCronWorkFlow(workFlows[i])
 			if err != nil {
 				panic(err)
 			}
-			for i := range workFlows {
-				err := e.addCronWorkFlow(workFlows[i])
-				if err != nil {
-					// todo
-					// maybe output log
-					panic(err)
-				}
+		}
+		return true
+	}
+
+	for {
+		select {
+		case <-e.CheckWorkFlowTicker.C:
+			// 首先查询自己专属的任务
+			var handled bool
+			var query string
+			query = getWorkFLowByExecutorBelongForUpdate(e.name, StateAvaiable, 1)
+			handled = addCronWorkFlow(query)
+
+			// 其次查询普通任务
+			if !handled {
+				query = getWorkFLowForUpdate(StateAvaiable, 1)
+				handled = addCronWorkFlow(query)
 			}
 		}
 	}
 }
 
-func (e *Executor) getAvaiableWorkFLow(n int) ([]*WorkFlow, error) {
+func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	tx, err := e.db.Beginx()
 	if err != nil {
 		return nil, err
@@ -78,7 +137,6 @@ func (e *Executor) getAvaiableWorkFLow(n int) ([]*WorkFlow, error) {
 		_ = tx.Rollback()
 	}()
 
-	query := getWorkFLowForUpdate(StateAvaiable, 1)
 	rows, err := tx.Queryx(query)
 	if err != nil {
 		return nil, err
@@ -122,10 +180,40 @@ func (e *Executor) getAvaiableWorkFLow(n int) ([]*WorkFlow, error) {
 	return workFlows, nil
 }
 
-func (e *Executor) Exec(workFlow *WorkFlow) (interface{}, error) {
+func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (interface{}, error) {
+	retry := 1
+	if workFlow.ErrorPolicy == ErrPolicyRetry {
+		retry = DefaultRetryCount
+	}
+	var resp interface{}
+	var err error
+
+	for retry > 0 {
+		l.Debugf("execByPolicy exec times:%d", retry)
+		resp, err = e.exec(workFlow)
+		if err != nil {
+			switch workFlow.ErrorPolicy {
+			case ErrPolicyIgnore:
+				err = nil
+			case ErrPolicyPanic:
+				panic(err)
+			case ErrPolicyRetry:
+			}
+			retry--
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 	if workFlow == nil {
 		return nil, ErrorInvalidPara
 	}
+
 	// 默认的执行方式是串行的
 	serialJob := NewSerialJob(nil)
 	for _, jobJroup := range workFlow.JobIds {
@@ -147,4 +235,32 @@ func (e *Executor) Exec(workFlow *WorkFlow) (interface{}, error) {
 		serialJob.Append(parallelJob)
 	}
 	return serialJob.Exec(context.Background(), workFlow.Para)
+}
+
+func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	workflow.State = state
+	query, args, err := upsertWorkflowSql(workflow)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
