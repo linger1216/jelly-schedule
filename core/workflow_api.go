@@ -81,7 +81,7 @@ func decodeCreateWorkflowRequest(r *http.Request) (interface{}, error) {
 func (w *workFlowAPI) CreateWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
 	request, ok := req.(*CreateWorkflowRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
 
 	in := request.Workflows
@@ -130,7 +130,7 @@ func decodeGetWorkflowRequest(r *http.Request) (interface{}, error) {
 func (w *workFlowAPI) GetWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
 	in, ok := req.(*GetWorkflowRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
 
 	resp := &GetWorkflowResponse{}
@@ -164,49 +164,6 @@ func (w *workFlowAPI) GetWorkflow(ctx context.Context, req interface{}) (interfa
 		}
 	}
 	return resp, nil
-}
-
-func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
-	ret := &WorkFlow{}
-	if v, ok := m[prefix+"id"]; ok {
-		ret.Id = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"name"]; ok {
-		ret.Name = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"description"]; ok {
-		ret.Description = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"job_ids"]; ok {
-		err := jsoniter.ConfigFastest.Unmarshal([]byte(utils.ToString(v)), &ret.JobIds)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if v, ok := m[prefix+"cron"]; ok {
-		ret.Cron = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"para"]; ok {
-		ret.Para = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"state"]; ok {
-		ret.State = utils.ToString(v)
-	}
-
-	if v, ok := m[prefix+"create_time"]; ok {
-		ret.CreateTime = utils.ToInt64(v)
-	}
-
-	if v, ok := m[prefix+"update_time"]; ok {
-		ret.UpdateTime = utils.ToInt64(v)
-	}
-	return ret, nil
 }
 
 type UpdateWorkflowRequest struct {
@@ -312,7 +269,7 @@ func decodeListWorkflowRequest(r *http.Request) (interface{}, error) {
 func (w *workFlowAPI) ListWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
 	in, ok := req.(*ListWorkflowRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
 
 	if in.PageSize == 0 {
@@ -416,7 +373,7 @@ func decodeDeleteWorkflowRequest(r *http.Request) (interface{}, error) {
 func (w *workFlowAPI) DeleteWorkflow(ctx context.Context, req interface{}) (interface{}, error) {
 	in, ok := req.(*DeleteWorkflowRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
 
 	resp := &DeleteWorkflowResponse{}
@@ -473,4 +430,59 @@ func encodeHTTPWorkflowResponse(w http.ResponseWriter, response interface{}) err
 		return encoder.Encode(x.Workflows)
 	}
 	return encoder.Encode(response)
+}
+
+func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
+	ret := &WorkFlow{}
+	if v, ok := m[prefix+"id"]; ok {
+		ret.Id = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"name"]; ok {
+		ret.Name = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"description"]; ok {
+		ret.Description = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"job_ids"]; ok {
+		err := jsoniter.ConfigFastest.Unmarshal([]byte(utils.ToString(v)), &ret.JobIds)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if v, ok := m[prefix+"cron"]; ok {
+		ret.Cron = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"para"]; ok {
+		ret.Para = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"execute_limit"]; ok {
+		ret.ExecuteLimit = utils.ToInt64(v)
+	}
+
+	if v, ok := m[prefix+"error_policy"]; ok {
+		ret.ErrorPolicy = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"belong_executor"]; ok {
+		ret.BelongExecutor = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"state"]; ok {
+		ret.State = utils.ToString(v)
+	}
+
+	if v, ok := m[prefix+"create_time"]; ok {
+		ret.CreateTime = utils.ToInt64(v)
+	}
+
+	if v, ok := m[prefix+"update_time"]; ok {
+		ret.UpdateTime = utils.ToInt64(v)
+	}
+	return ret, nil
 }

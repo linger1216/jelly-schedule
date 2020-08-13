@@ -1,11 +1,5 @@
 package core
 
-const (
-	StateAvaiable  = "avaiable"
-	StateExecuting = "executing"
-	StateFinish    = "finish"
-)
-
 type WorkFlow struct {
 	Id          string     `json:"id,omitempty"`
 	Name        string     `json:"name,omitempty"`
@@ -13,12 +7,13 @@ type WorkFlow struct {
 	JobIds      [][]string `json:"jobIds,omitempty"`
 	Cron        string     `json:"cron,omitempty"`
 	Para        string     `json:"para"`
-	State       string     `json:"state,omitempty"`
-	CreateTime  int64      `json:"createTime,omitempty"`
-	UpdateTime  int64      `json:"updateTime,omitempty"`
+	// 执行几次结束
+	ExecuteLimit int64 `json:"executeLimit" yaml:"executeLimit" `
+	// 碰到错误的方式
+	ErrorPolicy string `json:"errorPolicy" yaml:"errorPolicy"`
+	// 可以指定由哪个执行器执行
+	BelongExecutor string `json:"belongExecutor" yaml:"belongExecutor" `
+	State          string `json:"state,omitempty"`
+	CreateTime     int64  `json:"createTime,omitempty"`
+	UpdateTime     int64  `json:"updateTime,omitempty"`
 }
-
-// who
-// limit
-// shell Job
-// http Job

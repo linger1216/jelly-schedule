@@ -7,9 +7,11 @@ import (
 	"math"
 	"net"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"unsafe"
 )
 
@@ -286,4 +288,11 @@ func ReadFileContent(filename string) ([]byte, error) {
 	buf, err := ioutil.ReadAll(obj)
 	_ = obj.Close()
 	return buf, err
+}
+
+func InterruptHandler(errc chan<- error) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	terminateError := fmt.Errorf("%s", <-c)
+	errc <- terminateError
 }

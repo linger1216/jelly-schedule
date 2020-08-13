@@ -11,6 +11,14 @@ import (
 	"github.com/linger1216/jelly-schedule/utils/snowflake"
 )
 
+/*
+	// 执行几次结束
+	ExecuteLimit int64 `json:"executeLimit" yaml:"executeLimit" `
+	// 碰到错误的方式
+	ErrorPolicy string `json:"errorPolicy" yaml:"errorPolicy"`
+	// 可以指定由哪个执行器执行
+	BelongExecutor string `json:"belongExecutor" yaml:"belongExecutor" `
+*/
 var (
 	WorkflowTableName      = `workflow`
 	CreateWorkflowTableDDL = `create table if not exists ` + WorkflowTableName + `
@@ -21,13 +29,15 @@ var (
 			job_ids               varchar,
 			cron                  varchar,
       para                  varchar,
+      execute_limit         int,
+      error_policy          varchar,
+      belong_executor       varchar,
 			state                 varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
-	//WorkflowTableSelectColumn  = `id,name,description,array_to_string(, ',', ',') as job_ids,cron,create_time,update_time`
 	WorkflowTableSelectColumn  = `*`
-	WorkflowTableColumn        = `id,name,description,job_ids,cron,para,state,create_time,update_time`
+	WorkflowTableColumn        = `id,name,description,job_ids,cron,para,execute_limit,error_policy,belong_executor,state,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
@@ -37,6 +47,9 @@ var (
 	job_ids = excluded.job_ids,
 	cron = excluded.cron,
   para = excluded.para,
+  execute_limit = excluded.execute_limit,
+  error_policy = excluded.error_policy,
+  belong_executor = excluded.belong_executor,
   state = excluded.state,
   update_time = GREATEST(%s.update_time, excluded.update_time);`, WorkflowTableName)
 )
@@ -77,7 +90,8 @@ func upsertWorkflowSql(workflows []*WorkFlow) (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Para, v.State, createTime, updateTime)
+		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Para, v.ExecuteLimit, v.ErrorPolicy,
+			v.BelongExecutor, v.State, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,
 		strings.Join(values, ","), WorkflowTableOnConflictDDL)
@@ -130,6 +144,12 @@ func deleteWorkflowSql(ids []string) (string, []interface{}) {
 }
 
 // 行级锁
+// 用于executor获得任务
 func getWorkFLowForUpdate(state string, n int) string {
 	return fmt.Sprintf(`select * from %s where state = '%s' limit %d for update;`, WorkflowTableName, state, n)
+}
+
+func getWorkFLowByExecutorBelongForUpdate(belong, state string, n int) string {
+	return fmt.Sprintf(`select * from %s where state = '%s and executor_belong = %s' limit %d for update;`,
+		WorkflowTableName, state, belong, n)
 }

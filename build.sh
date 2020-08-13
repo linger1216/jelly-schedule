@@ -23,9 +23,15 @@
 # 使用sed命令，用新版本号 代替 老版本号
 # 删除临时文件
 
-rm -fr build
-mkdir -p build/bin
+#rm -fr build
+#mkdir -p build/bin
 
 go build -o build/bin/api cmd/api/api.go
 go build -o build/bin/executor cmd/executor/executor.go
 go build -o build/bin/echo-job example/echo-job/server/main.go
+
+# locker
+#go build -o build/bin/locker1 cmd/locker/*.go
+#go build -o build/bin/locker2 cmd/locker/*.go
+#go build -o build/bin/locker3 cmd/locker/*.go
+#go build -o build/bin/locker4 cmd/locker/*.go

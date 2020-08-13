@@ -5,13 +5,25 @@ import (
 	"net/http"
 )
 
+const (
+	StateAvaiable  = "avaiable"
+	StateExecuting = "executing"
+	StateFinish    = "finish"
+
+	ErrPolicyPanic  = "panic"
+	ErrPolicyIgnore = "ignore"
+	ErrPolicyRetry  = "retry"
+
+	ExecUnlimitCount = -1
+)
+
 var (
 	// etcd
 	ErrKeyAlreadyExists  = errors.New("key already exists")
 	ErrEtcdLeaseNotFound = errors.New("lease not found")
 
 	// api
-	ErrorBadRequest  = newApiError(http.StatusBadRequest, "StatusBadRequest")
+	ErrBadRequest    = newApiError(http.StatusBadRequest, "StatusBadRequest")
 	ErrorInvalidPara = newApiError(http.StatusBadRequest, "ErrorInvalidPara")
-	ErrNotFound      = errors.New("not found")
+	ErrNotFound      = newApiError(http.StatusNotFound, "ErrNotFound")
 )

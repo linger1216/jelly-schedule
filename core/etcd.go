@@ -53,6 +53,31 @@ func (e *Etcd) Close() error {
 	return nil
 }
 
+func (e *Etcd) TryLockWithTTL(key string, ttl int64) error {
+	lease := clientv3.NewLease(e.client)
+	grant, err := lease.Grant(context.Background(), ttl)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lease.Close() }()
+	ctx, cancelFunc := context.WithTimeout(context.Background(), e.timeout)
+	defer cancelFunc()
+
+	txn := e.client.Txn(ctx)
+	etcdRes, err := txn.If(
+		clientv3.Compare(clientv3.CreateRevision(key), "=", 0)).
+		Then(clientv3.OpPut(key, "", clientv3.WithLease(grant.ID))).
+		Commit()
+
+	if err != nil {
+		return err
+	}
+	if !etcdRes.Succeeded {
+		return ErrKeyAlreadyExists
+	}
+	return nil
+}
+
 func (e *Etcd) InsertKVNoExisted(ctx context.Context, key, val string, leaseID clientv3.LeaseID) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
 	defer cancelFunc()

@@ -17,10 +17,14 @@ func NewJobAPI(etcd *Etcd) *jobAPI {
 	return &jobAPI{etcd: etcd}
 }
 
-type getJobListRequest struct{}
+type ListJobRequest struct{}
 
-type getJobListResponse struct {
+type ListJobResponse struct {
 	JobStats []*JobInfo `json:"jobStats"`
+}
+
+func NewListJobResponse() *ListJobResponse {
+	return &ListJobResponse{JobStats: make([]*JobInfo, 0)}
 }
 
 func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
@@ -28,23 +32,25 @@ func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &getJobListRequest{}, nil
+	return &ListJobRequest{}, nil
 }
 
-func (w *jobAPI) getJobList(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*getJobListRequest)
+func (w *jobAPI) listJob(ctx context.Context, req interface{}) (interface{}, error) {
+	_, ok := req.(*ListJobRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
-
-	_ = request
 
 	_, v, err := w.etcd.GetWithPrefixKey(ctx, JobPrefix)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &getJobListResponse{}
+	resp := NewListJobResponse()
+	if len(v) == 0 {
+		return resp, nil
+	}
+
 	for i := range v {
 		stats := &JobInfo{}
 		err = jsoniter.ConfigFastest.Unmarshal([]byte(v[i]), stats)
@@ -53,16 +59,19 @@ func (w *jobAPI) getJobList(ctx context.Context, req interface{}) (interface{}, 
 		}
 		resp.JobStats = append(resp.JobStats, stats)
 	}
-
 	return resp, nil
 }
 
-type getJobRequest struct {
+type GetJobRequest struct {
 	ids []string
 }
 
-type getJobResponse struct {
+type GetJobResponse struct {
 	JobStats []*JobInfo `json:"jobStats"`
+}
+
+func NewGetJobResponse() *GetJobResponse {
+	return &GetJobResponse{JobStats: make([]*JobInfo, 0)}
 }
 
 func decodeGetJobRequest(r *http.Request) (interface{}, error) {
@@ -70,22 +79,26 @@ func decodeGetJobRequest(r *http.Request) (interface{}, error) {
 	_ = pathParams
 	queryParams := r.URL.Query()
 	_ = queryParams
-	return &getJobRequest{
+	return &GetJobRequest{
 		ids: strings.Split(pathParams["ids"], ","),
 	}, nil
 }
 
 func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, error) {
-	request, ok := req.(*getJobRequest)
+	request, ok := req.(*GetJobRequest)
 	if !ok {
-		return nil, ErrorBadRequest
+		return nil, ErrBadRequest
 	}
-	resp := &getJobResponse{}
+	resp := NewGetJobResponse()
 	for i := range request.ids {
-		v, err := w.etcd.Get(ctx, JobPrefix+"/"+request.ids[i])
+		v, err := w.etcd.Get(ctx, JobKey(request.ids[i]))
 		if err != nil {
 			return nil, err
 		}
+		if len(v) == 0 {
+			continue
+		}
+
 		stats := &JobInfo{}
 		err = jsoniter.ConfigFastest.Unmarshal(v, stats)
 		if err != nil {
@@ -94,4 +107,16 @@ func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, erro
 		resp.JobStats = append(resp.JobStats, stats)
 	}
 	return resp, nil
+}
+
+func encodeHTTPJobResponse(w http.ResponseWriter, response interface{}) error {
+	encoder := jsoniter.ConfigFastest.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	switch x := response.(type) {
+	case *ListJobResponse:
+		return encoder.Encode(x.JobStats)
+	case *GetJobResponse:
+		return encoder.Encode(x.JobStats)
+	}
+	return encoder.Encode(response)
 }

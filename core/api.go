@@ -102,12 +102,12 @@ func (w *scheduleAPI) Start() error {
 
 	// 获得Job List
 	m.HandleFunc("/schedule/job",
-		HandleFuncWrapper(decodeGetJobListRequest, w.job.getJobList, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeGetJobListRequest, w.job.listJob, encodeHTTPJobResponse)).
 		Methods("GET")
 
 	// 获得Job
 	m.HandleFunc("/schedule/job/{ids}",
-		HandleFuncWrapper(decodeGetJobRequest, w.job.getJob, encodeHTTPGenericResponse)).
+		HandleFuncWrapper(decodeGetJobRequest, w.job.getJob, encodeHTTPJobResponse)).
 		Methods("GET")
 
 	// create工作流
@@ -141,5 +141,5 @@ func (w *scheduleAPI) Start() error {
 		Methods("GET")
 
 	l.Debugf("api start: %d", w.config.Port)
-	return http.ListenAndServe(fmt.Sprintf("api start: %d", w.config.Port), cors.AllowAll().Handler(m))
+	return http.ListenAndServe(fmt.Sprintf(":%d", w.config.Port), cors.AllowAll().Handler(m))
 }
