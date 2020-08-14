@@ -11,7 +11,7 @@ const (
 	StateFailed    = "failed"
 	StateFinish    = "finish"
 
-	ErrPolicyPanic  = "panic"
+	ErrPolicyReturn = "return"
 	ErrPolicyIgnore = "ignore"
 	ErrPolicyRetry  = "retry"
 

@@ -14,13 +14,13 @@ import (
 // 并注册到etcd
 var (
 	JobPrefix = `/workFlowCron/job`
-	JobFormat = fasttemplate.New(JobPrefix+`/{Id}`, "{", "}")
+	JobFormat = fasttemplate.New(JobPrefix+`/{Name}`, "{", "}")
 	TTL       = int64(10)
 )
 
 func JobKey(id string) string {
 	s := JobFormat.ExecuteString(map[string]interface{}{
-		"Id": id,
+		"Name": id,
 	})
 	return s
 }

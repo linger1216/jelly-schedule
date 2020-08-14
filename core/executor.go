@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/robfig/cron/v3"
 	"time"
@@ -33,6 +34,11 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	ticker := time.NewTicker(time.Duration(config.CheckWorkFlowInterval) * time.Second)
 	e.CheckWorkFlowTicker = ticker
 	e.workFlowCron = cron.New()
+
+	// todo
+	// 需要确认在这里合适与否
+	e.workFlowCron.Start()
+
 	e.name = config.Name
 	e.executorContextMap = make(map[string]*ExecutorContext)
 	go e.handleTicker()
@@ -45,40 +51,41 @@ func (e *Executor) close() {
 
 func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
 
-	// todo
-	// 这一块有点乱
-	// 需要重新设计
+	// 为workflow创建定时任务
 	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
-		_, err := e.execByPolicy(nil, workflow)
+
+		workflowContext, ok := e.executorContextMap[workflow.Id]
+		if !ok || workflowContext == nil {
+			panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
+		}
+
+		_, err := e.execByPolicy(workflowContext.stats, workflow)
+
 		state := StateFinish
 		if err != nil {
 			l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
 			state = StateFailed
 		}
+
 		err = changeWorkFlowState(e.db, state, workflow)
 
 		if err != nil {
-			l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
+			//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
 		}
-		l.Debugf("%s workflow run success", workflow.Name)
+		//l.Debugf("%s workflow run success", workflow.Name)
 
-		workflowContext, ok := e.executorContextMap[workflow.Id]
-		if !ok {
-			panic("executorContextMap type invalid")
-		}
-
-		if workflowContext.stats.SuccessExecuteCount >= workflow.ExecuteLimit {
+		// 运行次数到了限定
+		// 退出
+		if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
 			e.workFlowCron.Remove(workflowContext.entry)
-			//workflowContext.
 			return
 		}
-
 	})
-
 	if err != nil {
 		return err
 	}
 
+	// 为workflow创建上下文Context
 	e.executorContextMap[workflow.Id] = &ExecutorContext{
 		stats: &WorkFlowStats{
 			Id: workflow.Id,
@@ -87,7 +94,7 @@ func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
 	}
 
 	// 再次运行确认没问题
-	e.workFlowCron.Start()
+	// e.workFlowCron.Start()
 	return nil
 }
 
@@ -185,28 +192,32 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 }
 
 func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (interface{}, error) {
+
 	retry := 1
 	if workFlow.ErrorPolicy == ErrPolicyRetry {
 		retry = DefaultRetryCount
 	}
+
 	var resp interface{}
 	var err error
 
 	for retry > 0 {
 		l.Debugf("execByPolicy exec times:%d", retry)
 		resp, err = e.exec(workFlow)
-		if err != nil {
-			switch workFlow.ErrorPolicy {
-			case ErrPolicyIgnore:
-				err = nil
-			case ErrPolicyPanic:
-				panic(err)
-			case ErrPolicyRetry:
-			}
-			retry--
+		if err == nil {
+			break
 		}
+		switch workFlow.ErrorPolicy {
+		case ErrPolicyIgnore:
+			err = nil
+		case ErrPolicyReturn:
+			panic(err)
+		case ErrPolicyRetry:
+		}
+		retry--
 	}
 
+	// retry final error
 	if err != nil {
 		return nil, err
 	}

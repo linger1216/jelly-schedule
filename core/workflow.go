@@ -1,5 +1,7 @@
 package core
 
+import "go.uber.org/atomic"
+
 type WorkFlow struct {
 	Id          string     `json:"id,omitempty"`
 	Name        string     `json:"name,omitempty"`
@@ -20,9 +22,9 @@ type WorkFlow struct {
 
 type WorkFlowStats struct {
 	Id                   string
-	SuccessExecuteCount  int64
-	RetryExecuteCount    int64
-	FailedExecuteCount   int64
-	LastExecuteDuration  int64
-	TotalExecuteDuration int64
+	SuccessExecuteCount  atomic.Int32
+	RetryExecuteCount    atomic.Int32
+	FailedExecuteCount   atomic.Int32
+	LastExecuteDuration  atomic.Int32
+	TotalExecuteDuration atomic.Int32
 }

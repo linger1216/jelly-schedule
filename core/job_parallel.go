@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-type ParallelError struct {
-	RawErrors []error
-	Final     error
-}
+//type ParallelError struct {
+//	RawErrors []error
+//	Final     error
+//}
+//
+//func (e ParallelError) Error() string {
+//	var suffix string
+//	if len(e.RawErrors) > 1 {
+//		a := make([]string, len(e.RawErrors)-1)
+//		for i := 0; i < len(e.RawErrors)-1; i++ { // last one is Final
+//			a[i] = e.RawErrors[i].Error()
+//		}
+//		suffix = fmt.Sprintf(" (previously: %s)", strings.Join(a, "; "))
+//	}
+//	return fmt.Sprintf("%v%s", e.Final, suffix)
+//}
 
-func (e ParallelError) Error() string {
-	var suffix string
-	if len(e.RawErrors) > 1 {
-		a := make([]string, len(e.RawErrors)-1)
-		for i := 0; i < len(e.RawErrors)-1; i++ { // last one is Final
-			a[i] = e.RawErrors[i].Error()
-		}
-		suffix = fmt.Sprintf(" (previously: %s)", strings.Join(a, "; "))
-	}
-	return fmt.Sprintf("%v%s", e.Final, suffix)
-}
-
-func (e ParallelError) Empty() bool {
-	return len(e.RawErrors) == 0
-}
+//func (e ParallelError) Empty() bool {
+//	return len(e.RawErrors) == 0
+//}
 
 type ParallelJob struct {
 	jobs     []Job
