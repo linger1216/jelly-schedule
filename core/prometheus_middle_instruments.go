@@ -1,32 +1,39 @@
 package core
 
+import (
+	"context"
+	"time"
+)
+
 //
 //import (
 //	"context"
 //	"github.com/go-kit/kit/endpoint"
 //	"time"
 //)
-//
-//
-//// InstrumentingMiddleware returns an endpoint middleware that records
-//// the duration of each invocation to the passed histogram. The middleware adds
-//// a single field: "success", which is "true" if no error is returned, and
-//// "false" otherwise.
-//
-//func Instrumenting(duration Histogram, counter Counter) Middleware {
-//	return func(next Endpoint) Endpoint {
-//		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-//			defer func(begin time.Time) {
-//				//errString := getErrorString(err)
-//				//accessKey := getAccessKey(ctx)
-//				//count := getCount(request)
-//				counter.With("error", errString, "access_key", accessKey).Add(count)
-//				duration.With("error", errString, "access_key", accessKey).Observe(time.Since(begin).Seconds())
-//			}(time.Now())
-//			return next(ctx, request)
-//		}
-//	}
-//}
+
+// InstrumentingMiddleware returns an endpoint middleware that records
+// the duration of each invocation to the passed histogram. The middleware adds
+// a single field: "success", which is "true" if no error is returned, and
+// "false" otherwise.
+// progress IGauge
+
+func Instrumenting(latency IHistogram, success, failed ICounter) Middleware {
+	return func(next Endpoint) Endpoint {
+		return func(ctx context.Context, request interface{}) (interface{}, error) {
+			defer func(begin time.Time) {
+				latency.Observe(time.Since(begin).Seconds())
+			}(time.Now())
+			resp, err := next(ctx, request)
+			if err != nil {
+				failed.Add(1)
+			} else {
+				success.Add(1)
+			}
+			return resp, err
+		}
+	}
+}
 
 //
 //func getAccessKey(ctx context.Context) string {

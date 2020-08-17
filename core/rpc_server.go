@@ -32,10 +32,10 @@ func (j *JsonRPCService) Exec(r *http.Request, arg *Request, result *Response) e
 
 type JsonRPCServer struct {
 	job   Job
-	stats JobInfo
+	stats JobDescription
 }
 
-func newJsonRPCServer(stats JobInfo, job Job) *JsonRPCServer {
+func newJsonRPCServer(stats JobDescription, job Job) *JsonRPCServer {
 	return &JsonRPCServer{stats: stats, job: job}
 }
 

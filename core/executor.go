@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
+	"net/http"
 	"time"
 )
 
 type ExecutorConfig struct {
 	Name                  string `json:"name" yaml:"name" `
 	CheckWorkFlowInterval int    `json:"checkWorkFlowInterval" yaml:"checkWorkFlowInterval" `
+	MetricPort            int    `json:"metricPort" yaml:"metricPort" `
 }
 
 type Executor struct {
@@ -30,11 +33,53 @@ type Executor struct {
 	// 成功次数
 	// 失败次数
 	progress *Gauge
+	latency  *Histogram
+	success  *Counter
+	failed   *Counter
 }
 
 type ExecutorContext struct {
 	stats *WorkFlowStats
 	entry cron.EntryID
+}
+
+// Total duration of requests in seconds.
+func initPrometheus(e *Executor, port int) {
+	fieldKeys := []string{"name"}
+
+	e.progress = NewGaugeFrom(prometheus.GaugeOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "progress",
+		Help:      "Workflow or Job progress",
+	}, fieldKeys)
+
+	e.latency = NewHistogramFrom(prometheus.HistogramOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "latency",
+		Help:      "Workflow or Job exec latency",
+	}, fieldKeys)
+
+	e.success = NewCounterFrom(prometheus.CounterOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "success",
+		Help:      "Workflow or Job success count",
+	}, fieldKeys)
+
+	e.failed = NewCounterFrom(prometheus.CounterOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "failed",
+		Help:      "Workflow or Job failed count",
+	}, fieldKeys)
+
+	go func() {
+		m := http.NewServeMux()
+		m.Handle("/metrics", promhttp.Handler())
+		_ = http.ListenAndServe(fmt.Sprintf(":%d", port), m)
+	}()
 }
 
 func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
@@ -52,8 +97,7 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e.executorContextMap = make(map[string]*ExecutorContext)
 
 	// prometheus
-	fieldKeys := []string{"name", "access_key", "error"}
-	e.progress = NewGaugeFrom(prometheus.GaugeOpts{}, fieldKeys)
+	initPrometheus(e, config.MetricPort)
 
 	go e.handleTicker()
 	return e
@@ -63,49 +107,58 @@ func (e *Executor) close() {
 	e.workFlowCron.Stop()
 }
 
-func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
+func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 
 	// 为workflow创建定时任务
-	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
+	// entryId, err :=
+	e.workFlowCron.AddFunc(workflow.Cron, func() {
 
-		workflowContext, ok := e.executorContextMap[workflow.Id]
-		if !ok || workflowContext == nil {
-			panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
+		// 要将workflow的执行封装成endpoint
+		// 然后剥笋子来封装
+
+		//workflowContext, ok := e.executorContextMap[workflow.Id]
+		//if !ok || workflowContext == nil {
+		//	panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
+		//}
+
+		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			return e.execByPolicy(nil, workflow)
 		}
 
-		_, err := e.execByPolicy(workflowContext.stats, workflow)
+		endpoint = Instrumenting(e.latency, e.success, e.failed)(endpoint)
 
-		state := StateFinish
-		if err != nil {
-			l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
-			state = StateFailed
-		}
+		//
+		//state := StateFinish
+		//if err != nil {
+		//	l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
+		//	state = StateFailed
+		//}
 
-		err = changeWorkFlowState(e.db, state, workflow)
-
-		if err != nil {
-			//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
-		}
+		//err = changeWorkFlowState(e.db, state, workflow)
+		//
+		//if err != nil {
+		//	//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
+		//}
 		//l.Debugf("%s workflow run success", workflow.Name)
 
 		// 运行次数到了限定
 		// 退出
-		if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
-			e.workFlowCron.Remove(workflowContext.entry)
-			return
-		}
+		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
+		//	e.workFlowCron.Remove(workflowContext.entry)
+		//	return
+		//}
 	})
-	if err != nil {
-		return err
-	}
+	//if err != nil {
+	//	return err
+	//}
 
 	// 为workflow创建上下文Context
-	e.executorContextMap[workflow.Id] = &ExecutorContext{
-		stats: &WorkFlowStats{
-			Id: workflow.Id,
-		},
-		entry: entryId,
-	}
+	//e.executorContextMap[workflow.Id] = &ExecutorContext{
+	//	stats: &WorkFlowStats{
+	//		Id: workflow.Id,
+	//	},
+	//	entry: entryId,
+	//}
 
 	// 再次运行确认没问题
 	// e.workFlowCron.Start()
@@ -114,7 +167,7 @@ func (e *Executor) addCronWorkFlow(workflow *WorkFlow) error {
 
 func (e *Executor) handleTicker() {
 
-	addCronWorkFlow := func(query string) bool {
+	findWorkFlowAndExecCron := func(query string) bool {
 		if len(query) == 0 {
 			return false
 		}
@@ -126,7 +179,7 @@ func (e *Executor) handleTicker() {
 			return false
 		}
 		for i := range workFlows {
-			err := e.addCronWorkFlow(workFlows[i])
+			err := e.execWorkFlowCron(workFlows[i])
 			if err != nil {
 				panic(err)
 			}
@@ -139,14 +192,10 @@ func (e *Executor) handleTicker() {
 		case <-e.CheckWorkFlowTicker.C:
 			// 首先查询自己专属的任务
 			var handled bool
-			var query string
-			query = getWorkFLowByExecutorBelongForUpdate(e.name, StateAvaiable, 1)
-			handled = addCronWorkFlow(query)
-
+			handled = findWorkFlowAndExecCron(getWorkFLowByExecutorBelongForUpdate(e.name, StateAvaiable, 1))
 			// 其次查询普通任务
 			if !handled {
-				query = getWorkFLowForUpdate(StateAvaiable, 1)
-				handled = addCronWorkFlow(query)
+				handled = findWorkFlowAndExecCron(getWorkFLowForUpdate(StateAvaiable, 1))
 			}
 		}
 	}
@@ -257,6 +306,7 @@ func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 		parallelJob := NewParallelJob(jobs)
 		serialJob.Append(parallelJob)
 	}
+
 	return serialJob.Exec(context.Background(), workFlow.Para)
 }
 

@@ -25,7 +25,6 @@ func main() {
 	//}, fieldKeys)
 
 	progress.With("method", "progress1").Add(1)
-
 	errc := make(chan error)
 	go func() {
 		m := http.NewServeMux()

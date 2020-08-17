@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-type JobInfo struct {
+type JobDescription struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Host        string `json:"host"`
@@ -19,7 +19,7 @@ type JobInfo struct {
 	JobPath     string `json:"jobPath"`
 }
 
-func (w JobInfo) String() string {
+func (w JobDescription) String() string {
 	table := termtables.CreateTable()
 	table.AddHeaders("Field", "Value")
 	table.AddRow("Name", w.Name)
@@ -30,16 +30,16 @@ func (w JobInfo) String() string {
 	return table.Render()
 }
 
-func (w JobInfo) ToJob() Job {
+func (w JobDescription) ToJob() Job {
 	return NewDefaultJob(&w)
 }
 
-func MarshalJobInfo(j *JobInfo) ([]byte, error) {
+func MarshalJobInfo(j *JobDescription) ([]byte, error) {
 	return jsoniter.ConfigFastest.Marshal(j)
 }
 
-func UnMarshalJobInfo(buf []byte) (*JobInfo, error) {
-	s := &JobInfo{}
+func UnMarshalJobInfo(buf []byte) (*JobDescription, error) {
+	s := &JobDescription{}
 	err := jsoniter.ConfigFastest.Unmarshal(buf, s)
 	if err != nil {
 		return nil, err
@@ -50,10 +50,10 @@ func UnMarshalJobInfo(buf []byte) (*JobInfo, error) {
 // executor从workflow中得到了job的id
 // 利用这个类, 封装成一个Job接口
 type DefaultJob struct {
-	info *JobInfo
+	info *JobDescription
 }
 
-func NewDefaultJob(info *JobInfo) *DefaultJob {
+func NewDefaultJob(info *JobDescription) *DefaultJob {
 	return &DefaultJob{info: info}
 }
 

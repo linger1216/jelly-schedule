@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func ListJobStats() ([]*JobInfo, error) {
+func ListJobStats() ([]*JobDescription, error) {
 	url := "/workFlowCron/job/{ids}"
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -30,7 +30,7 @@ func ListJobStats() ([]*JobInfo, error) {
 		return nil, err
 	}
 
-	ret := make([]*JobInfo, 0)
+	ret := make([]*JobDescription, 0)
 	err = jsoniter.ConfigDefault.Unmarshal(content, &ret)
 	if err != nil {
 		return nil, err

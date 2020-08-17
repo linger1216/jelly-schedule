@@ -26,7 +26,7 @@ func JobKey(id string) string {
 }
 
 type JobServer struct {
-	stats   JobInfo
+	stats   JobDescription
 	job     Job
 	etcd    *Etcd
 	leaseId clientv3.LeaseID

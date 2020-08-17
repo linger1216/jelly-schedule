@@ -20,11 +20,11 @@ func NewJobAPI(etcd *Etcd) *jobAPI {
 type ListJobRequest struct{}
 
 type ListJobResponse struct {
-	JobStats []*JobInfo `json:"jobStats"`
+	JobStats []*JobDescription `json:"jobStats"`
 }
 
 func NewListJobResponse() *ListJobResponse {
-	return &ListJobResponse{JobStats: make([]*JobInfo, 0)}
+	return &ListJobResponse{JobStats: make([]*JobDescription, 0)}
 }
 
 func decodeGetJobListRequest(r *http.Request) (interface{}, error) {
@@ -52,7 +52,7 @@ func (w *jobAPI) listJob(ctx context.Context, req interface{}) (interface{}, err
 	}
 
 	for i := range v {
-		stats := &JobInfo{}
+		stats := &JobDescription{}
 		err = jsoniter.ConfigFastest.Unmarshal([]byte(v[i]), stats)
 		if err != nil {
 			return nil, err
@@ -67,11 +67,11 @@ type GetJobRequest struct {
 }
 
 type GetJobResponse struct {
-	JobStats []*JobInfo `json:"jobStats"`
+	JobStats []*JobDescription `json:"jobStats"`
 }
 
 func NewGetJobResponse() *GetJobResponse {
-	return &GetJobResponse{JobStats: make([]*JobInfo, 0)}
+	return &GetJobResponse{JobStats: make([]*JobDescription, 0)}
 }
 
 func decodeGetJobRequest(r *http.Request) (interface{}, error) {
@@ -99,7 +99,7 @@ func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, erro
 			continue
 		}
 
-		stats := &JobInfo{}
+		stats := &JobDescription{}
 		err = jsoniter.ConfigFastest.Unmarshal(v, stats)
 		if err != nil {
 			return nil, err
