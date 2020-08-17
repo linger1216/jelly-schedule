@@ -89,7 +89,7 @@ func (w *workFlowAPI) CreateWorkflow(ctx context.Context, req interface{}) (inte
 		return nil, ErrorInvalidPara
 	}
 
-	query, args, err := upsertWorkflowSql(in)
+	query, args, err := upsertWorkflowSql(in...)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (w *workFlowAPI) UpdateWorkflow(ctx context.Context, req interface{}) (inte
 	if !ok || len(in.WorkFlows) == 0 {
 		return nil, ErrorInvalidPara
 	}
-	query, args, err := upsertWorkflowSql(in.WorkFlows)
+	query, args, err := upsertWorkflowSql(in.WorkFlows...)
 	if err != nil {
 		return nil, err
 	}

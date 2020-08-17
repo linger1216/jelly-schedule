@@ -30,7 +30,6 @@ func main() {
 	end := make(chan error)
 	pg := core.NewPostgres(&config.Postgres)
 	etcd := core.NewEtcd(&config.Etcd)
-
 	exec := core.NewExecutor(etcd, pg, config.Executor)
 	_ = exec
 	<-end

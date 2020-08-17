@@ -20,6 +20,7 @@ require (
 	github.com/lib/pq v1.8.0
 	github.com/linger1216/go-pipeline v0.0.0-20200331130805-f510dd84fc5d
 	github.com/mattn/go-runewidth v0.0.9 // indirect
+	github.com/prometheus/client_golang v1.7.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/scylladb/termtables v1.0.0

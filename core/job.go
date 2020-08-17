@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 )
 
 type Job interface {

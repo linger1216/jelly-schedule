@@ -21,10 +21,8 @@ type WorkFlow struct {
 }
 
 type WorkFlowStats struct {
-	Id                   string
-	SuccessExecuteCount  atomic.Int32
-	RetryExecuteCount    atomic.Int32
-	FailedExecuteCount   atomic.Int32
-	LastExecuteDuration  atomic.Int32
-	TotalExecuteDuration atomic.Int32
+	Id                  string
+	SuccessExecuteCount atomic.Int32
+	FailedExecuteCount  atomic.Int32
+	LastExecuteDuration atomic.Int32
 }

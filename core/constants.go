@@ -1,9 +1,13 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
+
+type Endpoint func(ctx context.Context, request interface{}) (response interface{}, err error)
+type Middleware func(Endpoint) Endpoint
 
 const (
 	StateAvaiable  = "avaiable"

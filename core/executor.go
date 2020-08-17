@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/robfig/cron/v3"
 	"time"
 )
@@ -22,6 +23,13 @@ type Executor struct {
 	// 用于执行workflow具体的cron
 	workFlowCron       *cron.Cron
 	executorContextMap map[string]*ExecutorContext
+
+	// prometheus
+	// 进度 gauge
+	// 响应时间
+	// 成功次数
+	// 失败次数
+	progress *Gauge
 }
 
 type ExecutorContext struct {
@@ -30,6 +38,7 @@ type ExecutorContext struct {
 }
 
 func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
+
 	e := &Executor{etcd: etcd, db: db}
 	ticker := time.NewTicker(time.Duration(config.CheckWorkFlowInterval) * time.Second)
 	e.CheckWorkFlowTicker = ticker
@@ -41,6 +50,11 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 
 	e.name = config.Name
 	e.executorContextMap = make(map[string]*ExecutorContext)
+
+	// prometheus
+	fieldKeys := []string{"name", "access_key", "error"}
+	e.progress = NewGaugeFrom(prometheus.GaugeOpts{}, fieldKeys)
+
 	go e.handleTicker()
 	return e
 }
@@ -192,7 +206,6 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 }
 
 func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (interface{}, error) {
-
 	retry := 1
 	if workFlow.ErrorPolicy == ErrPolicyRetry {
 		retry = DefaultRetryCount
@@ -202,22 +215,17 @@ func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (inter
 	var err error
 
 	for retry > 0 {
-		l.Debugf("execByPolicy exec times:%d", retry)
+		t := time.Now()
 		resp, err = e.exec(workFlow)
-		if err == nil {
-			break
+		stats.LastExecuteDuration.CAS(stats.LastExecuteDuration.Load(), int32(time.Since(t).Milliseconds()))
+		if err != nil {
+			stats.FailedExecuteCount.Inc()
+			continue
 		}
-		switch workFlow.ErrorPolicy {
-		case ErrPolicyIgnore:
-			err = nil
-		case ErrPolicyReturn:
-			panic(err)
-		case ErrPolicyRetry:
-		}
+		stats.SuccessExecuteCount.Inc()
 		retry--
 	}
 
-	// retry final error
 	if err != nil {
 		return nil, err
 	}
