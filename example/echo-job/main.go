@@ -31,9 +31,13 @@ func (e *EchoJob) Name() string {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
-	fmt.Printf("call Exec...")
+	cmd, ok := req.(string)
+	if !ok {
+		return nil, fmt.Errorf("echo para is not string")
+	}
+	fmt.Printf("echo:%s\n", cmd)
 	time.Sleep(time.Second * 3)
-	return req.(string) + " -> ok", nil
+	return cmd + " -> ok", nil
 }
 
 func init() {

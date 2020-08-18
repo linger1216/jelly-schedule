@@ -40,7 +40,14 @@ func (s *SerialJob) Exec(ctx context.Context, req interface{}) (interface{}, err
 			return nil, err
 		}
 		s.progress.Add(int32(100 / len(s.jobs)))
-		arg = resp
+
+		if arr, ok := resp.([]interface{}); ok {
+			if len(arr) == 1 {
+				arg = arr[0]
+			} else {
+				arg = resp
+			}
+		}
 	}
 	s.progress.CAS(int32(s.Progress()), 100)
 	return arg, nil
