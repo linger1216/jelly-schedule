@@ -21,6 +21,8 @@ const (
 	// prometheus
 	PrometheusNamespace = "Jelly"
 	PrometheusSubsystem = "Schedule"
+
+	RemoteServerMethod = `JsonRPCService.Exec`
 )
 
 var (

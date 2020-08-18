@@ -36,7 +36,8 @@ func (s *SerialJob) Exec(ctx context.Context, req interface{}) (interface{}, err
 	for i := range s.jobs {
 		resp, err := s.jobs[i].Exec(ctx, arg)
 		if err != nil {
-			return nil, NewJobError(s.jobs[i].Name(), err.Error())
+			//return nil, NewJobError(s.jobs[i].Name(), err.Error())
+			return nil, err
 		}
 		s.progress.Add(int32(100 / len(s.jobs)))
 		arg = resp

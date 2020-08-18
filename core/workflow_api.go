@@ -461,12 +461,12 @@ func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 		ret.Para = utils.ToString(v)
 	}
 
-	if v, ok := m[prefix+"execute_limit"]; ok {
-		ret.ExecuteLimit = utils.ToInt64(v)
+	if v, ok := m[prefix+"success_limit"]; ok {
+		ret.SuccessLimit = utils.ToInt64(v)
 	}
 
-	if v, ok := m[prefix+"error_policy"]; ok {
-		ret.ErrorPolicy = utils.ToString(v)
+	if v, ok := m[prefix+"failed_limit"]; ok {
+		ret.FailedLimit = utils.ToInt64(v)
 	}
 
 	if v, ok := m[prefix+"belong_executor"]; ok {

@@ -101,42 +101,42 @@ func (w *scheduleAPI) Start() error {
 	m := mux.NewRouter()
 
 	// 获得Job List
-	m.HandleFunc("/workFlowCron/job",
+	m.HandleFunc("/schedule/job",
 		HandleFuncWrapper(decodeGetJobListRequest, w.job.listJob, encodeHTTPJobResponse)).
 		Methods("GET")
 
 	// 获得Job
-	m.HandleFunc("/workFlowCron/job/{ids}",
+	m.HandleFunc("/schedule/job/{ids}",
 		HandleFuncWrapper(decodeGetJobRequest, w.job.getJob, encodeHTTPJobResponse)).
 		Methods("GET")
 
 	// create工作流
-	m.HandleFunc("/workFlowCron/workflow",
+	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeCreateWorkflowRequest, w.worflow.CreateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("POST")
 
 	// del工作流
-	m.HandleFunc("/workFlowCron/workflow",
+	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeDeleteWorkflowRequest, w.worflow.DeleteWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("DELETE")
 
 	// update工作流
-	m.HandleFunc("/workFlowCron/workflow",
+	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeUpdateWorkflowRequest, w.worflow.UpdateWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("PUT")
 
 	// List 工作流
-	m.HandleFunc("/workFlowCron/workflow",
+	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeListWorkflowRequest, w.worflow.ListWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("GET")
 
 	// HEAD 工作流
-	m.HandleFunc("/workFlowCron/workflow",
+	m.HandleFunc("/schedule/workflow",
 		HandleFuncWrapper(decodeListWorkflowRequestHeader, w.worflow.ListWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("HEAD")
 
 	// get 工作流
-	m.HandleFunc("/workFlowCron/workflow/{ids}",
+	m.HandleFunc("/schedule/workflow/{ids}",
 		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPWorkflowResponse)).
 		Methods("GET")
 

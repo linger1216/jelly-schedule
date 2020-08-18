@@ -13,7 +13,7 @@ import (
 
 /*
 	// 执行几次结束
-	ExecuteLimit int64 `json:"executeLimit" yaml:"executeLimit" `
+	SuccessLimit int64 `json:"executeLimit" yaml:"executeLimit" `
 	// 碰到错误的方式
 	ErrorPolicy string `json:"errorPolicy" yaml:"errorPolicy"`
 	// 可以指定由哪个执行器执行
@@ -29,15 +29,15 @@ var (
 			job_ids               varchar,
 			cron                  varchar,
       para                  varchar,
-      execute_limit         int,
-      error_policy          varchar,
+      success_limit         int,
+      failed_limit           int,
       belong_executor       varchar,
 			state                 varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
 	WorkflowTableSelectColumn  = `*`
-	WorkflowTableColumn        = `id,name,description,job_ids,cron,para,execute_limit,error_policy,belong_executor,state,create_time,update_time`
+	WorkflowTableColumn        = `id,name,description,job_ids,cron,para,success_limit,failed_limit,belong_executor,state,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
@@ -47,8 +47,8 @@ var (
 	job_ids = excluded.job_ids,
 	cron = excluded.cron,
   para = excluded.para,
-  execute_limit = excluded.execute_limit,
-  error_policy = excluded.error_policy,
+  success_limit = excluded.success_limit,
+  failed_limit = excluded.failed_limit,
   belong_executor = excluded.belong_executor,
   state = excluded.state,
   update_time = GREATEST(%s.update_time, excluded.update_time);`, WorkflowTableName)
@@ -90,7 +90,7 @@ func upsertWorkflowSql(workflows ...*WorkFlow) (string, []interface{}, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Para, v.ExecuteLimit, v.ErrorPolicy,
+		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Para, v.SuccessLimit, v.FailedLimit,
 			v.BelongExecutor, v.State, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,

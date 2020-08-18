@@ -58,13 +58,13 @@ func NewDefaultJob(info *JobDescription) *DefaultJob {
 }
 
 func (e *DefaultJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	message, err := json.EncodeClientRequest("JsonRPCService.exec", req)
+	message, err := json.EncodeClientRequest(RemoteServerMethod, req)
 	if err != nil {
 		return nil, err
 	}
 
 	uri := fmt.Sprintf("http://%s:%d/%s", e.info.Host, e.info.Port, e.info.ServicePath)
-	l.Debugf("%s rpc invoke %s", e.Name(), uri)
+	//l.Debugf("%s rpc invoke %s", e.Name(), uri)
 	resp, err := http.Post(uri, "application/json", bytes.NewReader(message))
 	defer func() { _ = resp.Body.Close() }()
 	if err != nil {

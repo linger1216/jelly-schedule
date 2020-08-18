@@ -107,6 +107,8 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	//e.statusQueue = newWorkFlowStatusCommandQueue()
 
 	go e.handleTicker()
+
+	l.Debugf("exec started.")
 	return e
 }
 
@@ -118,12 +120,12 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 	// 为workflow创建定时任务
 	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
 		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
-			return e.execByPolicy(workflow)
+			return e.exec(workflow)
 		}
 
 		etx, ok := e.executorContextMap[workflow.Id]
 		if !ok {
-			panic("impossiable")
+			panic("never impossiable")
 		}
 
 		now := time.Now()
@@ -134,14 +136,26 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		if err != nil {
 			etx.stats.FailedExecuteCount++
 			l.Debugf("workflow:%s err:%v", workflow.Name, err.Error())
-			return
+		} else {
+			etx.stats.SuccessExecuteCount++
+			l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
 		}
-		l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
 
-		//运行次数到了限定
-		if etx.stats.SuccessExecuteCount >= workflow.ExecuteLimit {
+		// 成功运行次数
+		// -1 代表无限
+		if workflow.SuccessLimit > 0 && etx.stats.SuccessExecuteCount >= workflow.SuccessLimit {
 			e.workFlowCron.Remove(etx.entry)
 			l.Debugf("workflow:%s remove cron:%d", workflow.Name, etx.entry)
+			changeWorkFlowState(e.db, StateFinish, workflow)
+			return
+		}
+
+		// 失败运行次数
+		// -1 代表无限
+		if workflow.FailedLimit > 0 && etx.stats.FailedExecuteCount >= workflow.FailedLimit {
+			e.workFlowCron.Remove(etx.entry)
+			l.Debugf("workflow:%s remove cron:%d", workflow.Name, etx.entry)
+			changeWorkFlowState(e.db, StateFailed, workflow)
 			return
 		}
 	})
@@ -252,28 +266,29 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	return workFlows, nil
 }
 
-func (e *Executor) execByPolicy(workFlow *WorkFlow) (interface{}, error) {
-	retry := 1
-	if workFlow.ErrorPolicy == ErrPolicyRetry {
-		retry = DefaultRetryCount
-	}
-
-	var resp interface{}
-	var err error
-
-	for retry > 0 {
-		resp, err = e.exec(workFlow)
-		if err != nil {
-			continue
-		}
-		retry--
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
+//
+//func (e *Executor) execByPolicy(workFlow *WorkFlow) (interface{}, error) {
+//	retry := 1
+//	if workFlow.ErrorPolicy == ErrPolicyRetry {
+//		retry = DefaultRetryCount
+//	}
+//
+//	var resp interface{}
+//	var err error
+//
+//	for retry > 0 {
+//		resp, err = e.exec(workFlow)
+//		if err == nil {
+//			break
+//		}
+//		retry--
+//	}
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//	return resp, nil
+//}
 
 func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 	if workFlow == nil {
@@ -374,7 +389,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 
 		// 运行次数到了限定
 		// 退出
-		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
+		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.SuccessLimit) {
 		//	e.workFlowCron.Remove(workflowContext.entry)
 		//	return
 		//}

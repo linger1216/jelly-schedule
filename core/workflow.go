@@ -8,9 +8,9 @@ type WorkFlow struct {
 	Cron        string     `json:"cron,omitempty"`
 	Para        string     `json:"para"`
 	// 执行几次结束
-	ExecuteLimit int64 `json:"executeLimit" yaml:"executeLimit" `
+	SuccessLimit int64 `json:"successLimit" yaml:"successLimit" `
 	// 碰到错误的方式
-	ErrorPolicy string `json:"errorPolicy" yaml:"errorPolicy"`
+	FailedLimit int64 `json:"failedLimit" yaml:"failedLimit"`
 	// 可以指定由哪个执行器执行
 	BelongExecutor string `json:"belongExecutor" yaml:"belongExecutor" `
 	State          string `json:"state,omitempty"`

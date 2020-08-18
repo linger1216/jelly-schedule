@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 import _ "net/http/pprof"
@@ -29,11 +30,9 @@ func (e *EchoJob) Name() string {
 	return "EchoJob"
 }
 
-func (e *EchoJob) Progress() int {
-	return 100
-}
-
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
+	fmt.Printf("call Exec...")
+	time.Sleep(time.Second * 3)
 	return req.(string) + " -> ok", nil
 }
 
