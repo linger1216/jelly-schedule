@@ -34,11 +34,11 @@ func (w JobDescription) ToJob() Job {
 	return NewDefaultJob(&w)
 }
 
-func MarshalJobInfo(j *JobDescription) ([]byte, error) {
+func MarshalJobDescription(j *JobDescription) ([]byte, error) {
 	return jsoniter.ConfigFastest.Marshal(j)
 }
 
-func UnMarshalJobInfo(buf []byte) (*JobDescription, error) {
+func UnMarshalJobDescription(buf []byte) (*JobDescription, error) {
 	s := &JobDescription{}
 	err := jsoniter.ConfigFastest.Unmarshal(buf, s)
 	if err != nil {
@@ -66,7 +66,7 @@ func (e *DefaultJob) Exec(ctx context.Context, req interface{}) (interface{}, er
 	uri := fmt.Sprintf("http://%s:%d/%s", e.info.Host, e.info.Port, e.info.ServicePath)
 	l.Debugf("%s rpc invoke %s", e.Name(), uri)
 	resp, err := http.Post(uri, "application/json", bytes.NewReader(message))
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}

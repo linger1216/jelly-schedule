@@ -10,5 +10,5 @@ type Middleware func(Endpoint) Endpoint
 
 type Job interface {
 	Name() string
-	Exec(ctx context.Context, req interface{}, stats Endpoint) (resp interface{}, err error)
+	Exec(ctx context.Context, req interface{}) (resp interface{}, err error)
 }

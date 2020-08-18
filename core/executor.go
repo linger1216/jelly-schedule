@@ -36,10 +36,14 @@ type Executor struct {
 	latency  *Histogram
 	success  *Counter
 	failed   *Counter
+
+	// stats
+	//newWorkFlowStatusCommandQueue
+	//statusQueue *WorkFlowStatusCommandQueue
 }
 
 type ExecutorContext struct {
-	stats *WorkFlowStats
+	stats *WorkFlowStatus
 	entry cron.EntryID
 }
 
@@ -97,7 +101,10 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e.executorContextMap = make(map[string]*ExecutorContext)
 
 	// prometheus
-	initPrometheus(e, config.MetricPort)
+	// initPrometheus(e, config.MetricPort)
+
+	//
+	//e.statusQueue = newWorkFlowStatusCommandQueue()
 
 	go e.handleTicker()
 	return e
@@ -108,65 +115,56 @@ func (e *Executor) close() {
 }
 
 func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
-
 	// 为workflow创建定时任务
-	// entryId, err :=
-	e.workFlowCron.AddFunc(workflow.Cron, func() {
-
-		// 要将workflow的执行封装成endpoint
-		// 然后剥笋子来封装
-
-		//workflowContext, ok := e.executorContextMap[workflow.Id]
-		//if !ok || workflowContext == nil {
-		//	panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
-		//}
-
+	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
 		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
-			return e.execByPolicy(nil, workflow)
+			return e.execByPolicy(workflow)
 		}
 
-		endpoint = Instrumenting(e.latency, e.success, e.failed)(endpoint)
+		etx, ok := e.executorContextMap[workflow.Id]
+		if !ok {
+			panic("impossiable")
+		}
 
-		//
-		//state := StateFinish
-		//if err != nil {
-		//	l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
-		//	state = StateFailed
-		//}
+		now := time.Now()
+		ctx := context.Background()
+		resp, err := endpoint(ctx, workflow)
+		etx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
+		l.Debugf("workflow:%s exec duration:%d", workflow.Name, etx.stats.LastExecuteDuration)
+		if err != nil {
+			etx.stats.FailedExecuteCount++
+			l.Debugf("workflow:%s err:%v", workflow.Name, err.Error())
+			return
+		}
+		l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
 
-		//err = changeWorkFlowState(e.db, state, workflow)
-		//
-		//if err != nil {
-		//	//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
-		//}
-		//l.Debugf("%s workflow run success", workflow.Name)
-
-		// 运行次数到了限定
-		// 退出
-		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
-		//	e.workFlowCron.Remove(workflowContext.entry)
-		//	return
-		//}
+		//运行次数到了限定
+		if etx.stats.SuccessExecuteCount >= workflow.ExecuteLimit {
+			e.workFlowCron.Remove(etx.entry)
+			l.Debugf("workflow:%s remove cron:%d", workflow.Name, etx.entry)
+			return
+		}
 	})
-	//if err != nil {
-	//	return err
-	//}
+
+	if err != nil {
+		return err
+	}
 
 	// 为workflow创建上下文Context
-	//e.executorContextMap[workflow.Id] = &ExecutorContext{
-	//	stats: &WorkFlowStats{
-	//		Id: workflow.Id,
-	//	},
-	//	entry: entryId,
-	//}
+	e.executorContextMap[workflow.Id] = &ExecutorContext{
+		stats: &WorkFlowStatus{
+			Id: workflow.Id,
+		},
+		entry: entryId,
+	}
 
-	// 再次运行确认没问题
-	// e.workFlowCron.Start()
+	// 运行Cron任务
+	e.workFlowCron.Start()
+	l.Debugf("workflow:%s add cron:%d", workflow.Name, entryId)
 	return nil
 }
 
 func (e *Executor) handleTicker() {
-
 	findWorkFlowAndExecCron := func(query string) bool {
 		if len(query) == 0 {
 			return false
@@ -254,7 +252,7 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	return workFlows, nil
 }
 
-func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (interface{}, error) {
+func (e *Executor) execByPolicy(workFlow *WorkFlow) (interface{}, error) {
 	retry := 1
 	if workFlow.ErrorPolicy == ErrPolicyRetry {
 		retry = DefaultRetryCount
@@ -264,14 +262,10 @@ func (e *Executor) execByPolicy(stats *WorkFlowStats, workFlow *WorkFlow) (inter
 	var err error
 
 	for retry > 0 {
-		t := time.Now()
 		resp, err = e.exec(workFlow)
-		stats.LastExecuteDuration.CAS(stats.LastExecuteDuration.Load(), int32(time.Since(t).Milliseconds()))
 		if err != nil {
-			stats.FailedExecuteCount.Inc()
 			continue
 		}
-		stats.SuccessExecuteCount.Inc()
 		retry--
 	}
 
@@ -295,7 +289,7 @@ func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			info, err := UnMarshalJobInfo(buf)
+			info, err := UnMarshalJobDescription(buf)
 			if err != nil {
 				return nil, err
 			}
@@ -337,3 +331,69 @@ func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {
 
 	return nil
 }
+
+/*
+
+func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
+
+	// 为workflow创建定时任务
+	// entryId, err :=
+	e.workFlowCron.AddFunc(workflow.Cron, func() {
+
+		// 要将workflow的执行封装成endpoint
+		// 然后剥笋子来封装
+
+		//workflowContext, ok := e.executorContextMap[workflow.Id]
+		//if !ok || workflowContext == nil {
+		//	panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
+		//}
+
+		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
+			return e.execByPolicy(nil, workflow)
+		}
+
+
+
+
+
+		// endpoint = Instrumenting(e.latency, e.success, e.failed)(endpoint)
+
+		//
+		//state := StateFinish
+		//if err != nil {
+		//	l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
+		//	state = StateFailed
+		//}
+
+		//err = changeWorkFlowState(e.db, state, workflow)
+		//
+		//if err != nil {
+		//	//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
+		//}
+		//l.Debugf("%s workflow run success", workflow.Name)
+
+		// 运行次数到了限定
+		// 退出
+		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.ExecuteLimit) {
+		//	e.workFlowCron.Remove(workflowContext.entry)
+		//	return
+		//}
+	})
+
+	//if err != nil {
+	//	return err
+	//}
+
+	// 为workflow创建上下文Context
+	//e.executorContextMap[workflow.Id] = &ExecutorContext{
+	//	stats: &WorkFlowStatus{
+	//		Id: workflow.Id,
+	//	},
+	//	entry: entryId,
+	//}
+
+	// 再次运行确认没问题
+	// e.workFlowCron.Start()
+	return nil
+}
+*/

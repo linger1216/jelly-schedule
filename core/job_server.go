@@ -96,7 +96,7 @@ func (w *JobServer) register() error {
 		}
 		w.leaseId = roleLeaseId
 	}
-	jsonBuf, _ := MarshalJobInfo(&w.stats)
+	jsonBuf, _ := MarshalJobDescription(&w.stats)
 	return w.etcd.InsertKV(context.Background(), JobKey(w.stats.Id), string(jsonBuf), w.leaseId)
 }
 
