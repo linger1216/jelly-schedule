@@ -29,6 +29,7 @@ var (
 	// etcd
 	ErrKeyAlreadyExists  = errors.New("key already exists")
 	ErrEtcdLeaseNotFound = errors.New("lease not found")
+	ErrJobNotFound       = errors.New("job not found")
 
 	// api
 	ErrBadRequest    = newApiError(http.StatusBadRequest, "StatusBadRequest")

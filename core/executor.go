@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -294,29 +295,50 @@ func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 	if workFlow == nil {
 		return nil, ErrorInvalidPara
 	}
-
-	// 默认的执行方式是串行的
-	serialJob := NewSerialJob(nil)
-	for _, jobJroup := range workFlow.JobIds {
-		jobs := make([]Job, 0)
-		for _, jobId := range jobJroup {
-			buf, err := e.etcd.Get(context.Background(), JobKey(jobId))
-			if err != nil {
-				return nil, err
+	finalJob := NewSerialJob(nil)
+	// [["a"],["a","b","c"], ["x.y.z"]]
+	for _, jobGroup := range workFlow.JobIds {
+		parallelJobs := make([]Job, 0)
+		for _, group := range jobGroup {
+			ids := strings.Split(group, ",")
+			if len(ids) > 1 {
+				serial := NewSerialJob(nil)
+				for _, id := range ids {
+					job, err := e.getJob(id)
+					if err != nil {
+						return nil, err
+					}
+					serial.Append(job)
+				}
+				parallelJobs = append(parallelJobs, serial)
+			} else if len(ids) == 1 {
+				job, err := e.getJob(ids[0])
+				if err != nil {
+					return nil, err
+				}
+				parallelJobs = append(parallelJobs, job)
+			} else {
+				return nil, ErrJobNotFound
 			}
-			info, err := UnMarshalJobDescription(buf)
-			if err != nil {
-				return nil, err
-			}
-			jobs = append(jobs, info.ToJob())
 		}
 		// 如果某个节点的job数量大于1
 		// 说明这个节点可以多个job同时运行
-		parallelJob := NewParallelJob(jobs)
-		serialJob.Append(parallelJob)
+		parallelJob := NewParallelJob(parallelJobs)
+		finalJob.Append(parallelJob)
 	}
+	return finalJob.Exec(context.Background(), workFlow.Para)
+}
 
-	return serialJob.Exec(context.Background(), workFlow.Para)
+func (e *Executor) getJob(jobId string) (Job, error) {
+	buf, err := e.etcd.Get(context.Background(), JobKey(jobId))
+	if err != nil {
+		return nil, err
+	}
+	info, err := UnMarshalJobDescription(buf)
+	if err != nil {
+		return nil, err
+	}
+	return info.ToJob(), nil
 }
 
 func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {
