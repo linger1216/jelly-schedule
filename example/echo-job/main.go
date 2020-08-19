@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
+	"github.com/linger1216/jelly-schedule/utils"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
-	"time"
 )
 
 import _ "net/http/pprof"
@@ -31,13 +32,11 @@ func (e *EchoJob) Name() string {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
-	cmd, ok := req.(string)
-	if !ok {
-		return nil, fmt.Errorf("echo para is not string")
+	cmds, err := utils.ExactJobRequests(req)
+	if err != nil {
+		return nil, err
 	}
-	fmt.Printf("echo:%s\n", cmd)
-	time.Sleep(time.Second * 3)
-	return cmd + " -> ok", nil
+	return fmt.Sprintf("echo:%s", strings.Join(cmds, ",")), nil
 }
 
 func init() {

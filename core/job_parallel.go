@@ -8,27 +8,6 @@ import (
 	"sync"
 )
 
-//type ParallelError struct {
-//	RawErrors []error
-//	Final     error
-//}
-//
-//func (e ParallelError) Error() string {
-//	var suffix string
-//	if len(e.RawErrors) > 1 {
-//		a := make([]string, len(e.RawErrors)-1)
-//		for i := 0; i < len(e.RawErrors)-1; i++ { // last one is Final
-//			a[i] = e.RawErrors[i].Error()
-//		}
-//		suffix = fmt.Sprintf(" (previously: %s)", strings.Join(a, "; "))
-//	}
-//	return fmt.Sprintf("%v%s", e.Final, suffix)
-//}
-
-//func (e ParallelError) Empty() bool {
-//	return len(e.RawErrors) == 0
-//}
-
 type ParallelJob struct {
 	jobs     []Job
 	progress *atomic.Int32
@@ -51,6 +30,12 @@ func (s *ParallelJob) Progress() int {
 }
 
 func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
+	reqs, err := exactParallelRequest(req, len(s.jobs))
+	l.Debugf("ParallelJob reqs:%v", reqs)
+	if err != nil {
+		return nil, err
+	}
+
 	var rawErrors Errors
 	arr := make([]interface{}, len(s.jobs))
 	wg := sync.WaitGroup{}
@@ -59,7 +44,7 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 		go func(pos int) {
 			defer wg.Done()
 			defer s.progress.Add(int32(100 / len(s.jobs)))
-			resp, err := s.jobs[i].Exec(ctx, req)
+			resp, err := s.jobs[i].Exec(ctx, reqs[i])
 			if err != nil {
 				rawErrors = append(rawErrors, fmt.Errorf("[%d] err:%s", pos, err.Error()))
 				return

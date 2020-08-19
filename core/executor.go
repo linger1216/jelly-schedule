@@ -267,30 +267,6 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	return workFlows, nil
 }
 
-//
-//func (e *Executor) execByPolicy(workFlow *WorkFlow) (interface{}, error) {
-//	retry := 1
-//	if workFlow.ErrorPolicy == ErrPolicyRetry {
-//		retry = DefaultRetryCount
-//	}
-//
-//	var resp interface{}
-//	var err error
-//
-//	for retry > 0 {
-//		resp, err = e.exec(workFlow)
-//		if err == nil {
-//			break
-//		}
-//		retry--
-//	}
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//	return resp, nil
-//}
-
 func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 	if workFlow == nil {
 		return nil, ErrorInvalidPara

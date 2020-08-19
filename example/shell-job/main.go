@@ -29,15 +29,18 @@ func (e *ShellJob) Name() string {
 }
 
 func (e *ShellJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	cmd, ok := req.(string)
-	if !ok {
-		return nil, fmt.Errorf("shell is not string")
-	}
-	fmt.Printf("shell:%s\n", cmd)
-	command := exec.Command("/bin/sh", "-c", cmd)
-	resp, err := command.Output()
+	cmds, err := utils.ExactJobRequests(req)
 	if err != nil {
 		return nil, err
+	}
+	var resp []byte
+	for _, cmd := range cmds {
+		fmt.Printf("shell:%s\n", cmd)
+		command := exec.Command("/bin/sh", "-c", cmd)
+		resp, err = command.Output()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return string(resp), nil
 }

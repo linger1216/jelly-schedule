@@ -32,22 +32,15 @@ func (s *SerialJob) Progress() int {
 }
 
 func (s *SerialJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	arg := req
+	arg := exactSerialRequest(req)
+	l.Debugf("SerialJob reqs:%v", arg)
 	for i := range s.jobs {
 		resp, err := s.jobs[i].Exec(ctx, arg)
 		if err != nil {
-			//return nil, NewJobError(s.jobs[i].Name(), err.Error())
 			return nil, err
 		}
 		s.progress.Add(int32(100 / len(s.jobs)))
-
-		if arr, ok := resp.([]interface{}); ok {
-			if len(arr) == 1 {
-				arg = arr[0]
-			} else {
-				arg = resp
-			}
-		}
+		arg = exactSerialRequest(resp)
 	}
 	s.progress.CAS(int32(s.Progress()), 100)
 	return arg, nil
