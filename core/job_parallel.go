@@ -31,7 +31,7 @@ func (s *ParallelJob) Progress() int {
 
 func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
 	reqs, err := exactParallelRequest(req, len(s.jobs))
-	l.Debugf("ParallelJob reqs:%v", reqs)
+	//l.Debugf("ParallelJob reqs:%v", reqs)
 	if err != nil {
 		return nil, err
 	}

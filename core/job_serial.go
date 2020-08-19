@@ -33,7 +33,7 @@ func (s *SerialJob) Progress() int {
 
 func (s *SerialJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
 	arg := exactSerialRequest(req)
-	l.Debugf("SerialJob reqs:%v", arg)
+	//l.Debugf("SerialJob reqs:%v", arg)
 	for i := range s.jobs {
 		resp, err := s.jobs[i].Exec(ctx, arg)
 		if err != nil {
