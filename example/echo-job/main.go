@@ -49,6 +49,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	if len(config.Job.Host) > 0 {
+		err = os.Setenv("SERVICE_HOST", config.Job.Host)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	end := make(chan error)
 	etcd := core.NewEtcd(&config.Etcd)
 	core.NewJobServer(etcd, NewEchoJob())

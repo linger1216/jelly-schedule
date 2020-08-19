@@ -15,6 +15,10 @@ type Job interface {
 	Exec(ctx context.Context, req interface{}) (resp interface{}, err error)
 }
 
+type JobConfig struct {
+	Host string `json:"name" yaml:"name" `
+}
+
 func exactSerialRequest(req interface{}) interface{} {
 	var arg interface{}
 	switch x := req.(type) {
