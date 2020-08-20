@@ -16,6 +16,8 @@ import (
 	"unsafe"
 )
 
+const SERVICE_HOST = "SERVICE_HOST"
+
 func GetExecFilename() string {
 	_, filename, _, _ := runtime.Caller(1)
 	cwdPath, _ := os.Getwd()
@@ -43,7 +45,7 @@ func GetHost() string {
 }
 
 func getIpFromEnv() string {
-	return os.Getenv("SERVICE_HOST")
+	return os.Getenv(SERVICE_HOST)
 }
 
 func getIpFromSpecialName(name ...string) string {
