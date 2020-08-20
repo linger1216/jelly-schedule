@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
 	"strings"
 )
 
@@ -22,7 +21,7 @@ func (e *EchoJob) Name() string {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
-	cmds, err := utils.ExactJobRequests(req)
+	cmds, err := core.ExactJobRequests(req)
 	if err != nil {
 		return nil, err
 	}

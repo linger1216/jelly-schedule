@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"math"
 	"net"
@@ -298,28 +297,4 @@ func InterruptHandler(errc chan<- error) {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	terminateError := fmt.Errorf("%s", <-c)
 	errc <- terminateError
-}
-
-func ExactJobRequests(req interface{}) ([]string, error) {
-	args := make([]string, 0)
-	switch x := req.(type) {
-	case string:
-		_ = jsoniter.ConfigFastest.Unmarshal([]byte(x), &args)
-		if len(args) > 0 {
-			break
-		}
-		arr := strings.Split(x, ",")
-		for i := range arr {
-			args = append(args, arr[i])
-		}
-	case []interface{}:
-		for i := range x {
-			if v, ok := x[i].(string); ok {
-				args = append(args, v)
-			} else {
-				return nil, fmt.Errorf("%d arg %v invalid", i, x[i])
-			}
-		}
-	}
-	return args, nil
 }

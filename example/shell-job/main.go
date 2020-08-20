@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
 	"os/exec"
 )
 
@@ -22,7 +21,7 @@ func (e *ShellJob) Name() string {
 }
 
 func (e *ShellJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	cmds, err := utils.ExactJobRequests(req)
+	cmds, err := core.ExactJobRequests(req)
 	if err != nil {
 		return nil, err
 	}
