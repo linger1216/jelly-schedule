@@ -8,6 +8,10 @@ import (
 	"net/http"
 )
 
+const (
+	RemoteServerMethod = `JsonRPCService.Exec`
+)
+
 // executor从workflow中得到了job的id
 // 利用这个类, 封装成一个Job接口
 type WrapperJob struct {

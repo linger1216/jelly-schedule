@@ -6,23 +6,15 @@ import (
 )
 
 const (
-	StateAvaiable  = "avaiable"
+	StateAvaiable = "available"
+	// available
 	StateExecuting = "executing"
 	StateFailed    = "failed"
 	StateFinish    = "finish"
 
-	ErrPolicyReturn = "return"
-	ErrPolicyIgnore = "ignore"
-	ErrPolicyRetry  = "retry"
-
-	ExecUnlimitCount  = -1
-	DefaultRetryCount = 3
-
 	// prometheus
 	PrometheusNamespace = "Jelly"
 	PrometheusSubsystem = "Schedule"
-
-	RemoteServerMethod = `JsonRPCService.Exec`
 )
 
 var (
