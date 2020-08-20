@@ -41,7 +41,7 @@ func exactParallelRequest(req interface{}, size int) ([]interface{}, error) {
 		arr := make([]string, 0)
 		_ = jsoniter.ConfigFastest.Unmarshal([]byte(x), &arr)
 		if len(arr) == 0 {
-			arr = strings.Split(x, ",")
+			arr = strings.Split(x, ";")
 		}
 		if len(arr) != size {
 			return nil, ErrorJobParaInvalid
