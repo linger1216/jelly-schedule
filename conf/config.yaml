@@ -4,6 +4,9 @@ etcd:
   uri: 172.3.0.122:2379
   timeout: 5
 
+job:
+  host: localhost
+
 postgres:
   uri: postgres://lid.guan:@localhost:15432/schedule?sslmode=disable
   maxIdle: 10
