@@ -150,7 +150,7 @@ func getWorkFLowForUpdate(state string, n int) string {
 }
 
 func getWorkFLowByExecutorBelongForUpdate(belong, state string, n int) string {
-	return fmt.Sprintf(`select * from %s where state = '%s and executor_belong = %s' limit %d for update;`,
+	return fmt.Sprintf(`select * from %s where state = '%s' and belong_executor = '%s' limit %d for update;`,
 		WorkflowTableName, state, belong, n)
 }
 

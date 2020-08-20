@@ -104,8 +104,11 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	// prometheus
 	// initPrometheus(e, config.MetricPort)
 
-	//
-	//e.statusQueue = newWorkFlowStatusCommandQueue()
+	// db
+	_, err := db.Exec(createWorkflowTableSql())
+	if err != nil {
+		panic(err)
+	}
 
 	go e.handleTicker()
 

@@ -1,36 +1,37 @@
 package core
 
-import (
-	"context"
-	"log"
-	"testing"
-	"time"
-)
-
-func InitEtcd() *Etcd {
-
-	etcd, err := NewEtcd([]string{"172.3.0.122:2379"}, time.Second*5)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return etcd
-}
-
-func TestEtcd(t *testing.T) {
-	e := InitEtcd()
-	id, err := e.GrantLease(5)
-	err = e.InsertKVNoExisted(context.Background(), "/ttl", "val", id)
-	if err != nil {
-		panic(err)
-	}
-
-	time.Sleep(3 * time.Second)
-	_, err = e.RevokeLease(id)
-	if err != nil {
-		panic(err)
-	}
-}
+//
+//import (
+//	"context"
+//	"log"
+//	"testing"
+//	"time"
+//)
+//
+//func InitEtcd() *Etcd {
+//
+//	etcd, err := NewEtcd([]string{"172.3.0.122:2379"}, time.Second*5)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	return etcd
+//}
+//
+//func TestEtcd(t *testing.T) {
+//	e := InitEtcd()
+//	id, err := e.GrantLease(5)
+//	err = e.InsertKVNoExisted(context.Background(), "/ttl", "val", id)
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	time.Sleep(3 * time.Second)
+//	_, err = e.RevokeLease(id)
+//	if err != nil {
+//		panic(err)
+//	}
+//}
 
 //
 //func TestEtcd_Put(t *testing.T) {

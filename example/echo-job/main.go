@@ -36,7 +36,7 @@ func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	return fmt.Sprintf("echo:%s", strings.Join(cmds, ",")), nil
+	return fmt.Sprintf("echo:%s\n", strings.Join(cmds, ",")), nil
 }
 
 func init() {

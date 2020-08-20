@@ -16,7 +16,7 @@ type Job interface {
 }
 
 type JobConfig struct {
-	Host string `json:"name" yaml:"name" `
+	Host string `json:"host" yaml:"host" `
 }
 
 func exactSerialRequest(req interface{}) interface{} {
