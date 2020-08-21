@@ -28,7 +28,7 @@ func StartClientJob(job Job) {
 
 	end := make(chan error)
 	etcd := NewEtcd(&config.Etcd)
-	NewJobServer(etcd, job)
+	NewJobServer(etcd, config.Job.Id, job)
 	go utils.InterruptHandler(end)
 	<-end
 }
