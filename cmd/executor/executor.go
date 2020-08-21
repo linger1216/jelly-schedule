@@ -1,13 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"os"
-	"os/signal"
-	"syscall"
-
 	_ "net/http/pprof"
 )
 
@@ -35,11 +30,4 @@ func main() {
 	<-end
 	_ = etcd.Close()
 	_ = pg.Close()
-}
-
-func interruptHandler(errc chan<- error) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	terminateError := fmt.Errorf("%s", <-c)
-	errc <- terminateError
 }

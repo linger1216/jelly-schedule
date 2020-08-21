@@ -31,10 +31,11 @@ func (e *WrapperJob) Exec(ctx context.Context, req interface{}) (interface{}, er
 	uri := fmt.Sprintf("http://%s:%d/%s", e.info.Host, e.info.Port, e.info.ServicePath)
 	//l.Debugf("%s rpc invoke %s", e.Name(), uri)
 	resp, err := http.Post(uri, "application/json", bytes.NewReader(message))
-	defer func() { _ = resp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() { _ = resp.Body.Close() }()
 
 	reply := ""
 	err = json.DecodeClientResponse(resp.Body, &reply)
