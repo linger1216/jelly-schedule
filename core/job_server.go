@@ -33,14 +33,18 @@ type JobServer struct {
 	ticker  *time.Ticker
 }
 
-func NewJobServer(etcd *Etcd, job Job) *JobServer {
+func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 	ret := &JobServer{}
 	jobPath, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 
-	ret.stats.Id = snowflake.Generate()
+	if len(id) == 0 {
+		id = snowflake.Generate()
+	}
+
+	ret.stats.Id = id
 	ret.stats.JobPath = jobPath
 	ret.stats.Name = job.Name()
 	ret.stats.Host = utils.GetHost()
