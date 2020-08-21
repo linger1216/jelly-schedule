@@ -71,7 +71,7 @@ func NewJobServer(etcd *Etcd, job Job) *JobServer {
 		}
 	}()
 
-	l.Debugf("job %s started: %d", ret.stats.Name, port)
+	l.Debugf("job %s started: host:%s port:%d id:%s", ret.stats.Name, ret.stats.Host, port, ret.stats.Id)
 	return ret
 }
 
