@@ -44,7 +44,7 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 		go func(pos int) {
 			defer wg.Done()
 			defer s.progress.Add(int32(100 / len(s.jobs)))
-			resp, err := s.jobs[i].Exec(ctx, reqs[i])
+			resp, err := s.jobs[pos].Exec(ctx, reqs[pos])
 			if err != nil {
 				rawErrors = append(rawErrors, fmt.Errorf("[%d] err:%s", pos, err.Error()))
 				return
