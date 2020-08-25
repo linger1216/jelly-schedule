@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/coreos/etcd/clientv3"
 	"strings"
 	"time"
@@ -224,6 +225,50 @@ func (e *Etcd) Get(ctx context.Context, key string) (value []byte, err error) {
 	}
 	value = getResponse.Kvs[0].Value
 	return
+}
+
+func (e *Etcd) KeepaliveWithTTL(ctx context.Context, key, value string, ttl int64) error {
+	lease := clientv3.NewLease(e.client)
+	grant, err := lease.Grant(ctx, ttl)
+	if err != nil {
+		return err
+	}
+
+	// 但这个grant会过期, 需要对其进行长时间的续租
+	keepAliveResponseCh, err := lease.KeepAlive(ctx, grant.ID)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for keep := range keepAliveResponseCh {
+			if keep == nil {
+				panic(fmt.Sprintf("tx keepalive has lose key:%s", key))
+			}
+			//fmt.Printf("recv keepAliveResponse id:%d ttl:%d\n", keep.ID, keep.TTL)
+		}
+	}()
+
+	// 执行事务需要超时
+	ctx, cancelFunc := context.WithTimeout(ctx, e.timeout)
+	defer cancelFunc()
+
+	txn := e.client.Txn(ctx)
+	resp, err := txn.If(clientv3.Compare(clientv3.CreateRevision(key), "=", 0)).
+		Then(clientv3.OpPut(key, value, clientv3.WithLease(grant.ID))).
+		Else(clientv3.OpGet(key)).
+		Commit()
+	if err != nil {
+		_ = lease.Close()
+		return err
+	}
+
+	if !resp.Succeeded {
+		_ = lease.Close()
+		return fmt.Errorf("%s -> %s renew lease error\n", key, value)
+	}
+
+	return nil
 }
 
 //func (etcd *Etcd) Watch(key string, cb func(*clientv3.Event)) error {

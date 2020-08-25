@@ -2,10 +2,12 @@ package core
 
 import (
 	"context"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/linger1216/jelly-schedule/utils"
 	"github.com/linger1216/jelly-schedule/utils/snowflake"
 	"github.com/valyala/fasttemplate"
 	"os"
+	"time"
 )
 
 // 提供给用户使用, 内部会调用RPC, 抽象成服务
@@ -24,9 +26,11 @@ func JobKey(id string) string {
 }
 
 type JobServer struct {
-	stats JobDescription
-	job   Job
-	etcd  *Etcd
+	stats   JobDescription
+	job     Job
+	etcd    *Etcd
+	leaseId clientv3.LeaseID
+	ticker  *time.Ticker
 }
 
 func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
@@ -59,6 +63,10 @@ func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 		panic(err)
 	}
 
+	ticker := time.NewTicker(time.Duration(TTL/3) * time.Second)
+	ret.ticker = ticker
+	go ret.handleTicker()
+
 	serve := newJsonRPCServer(ret.stats, ret.job)
 	go func() {
 		err := serve.Start()
@@ -71,9 +79,29 @@ func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 	return ret
 }
 
+func (w *JobServer) handleTicker() {
+	for {
+		select {
+		case <-w.ticker.C:
+			if err := w.etcd.RenewLease(context.Background(), w.leaseId); err != nil {
+				l.Debugf("renew %s lease err:%s", w.stats.Name, err.Error())
+			} else {
+				//l.Debugf("renew %s lease ok", w.stats.Name)
+			}
+		}
+	}
+}
+
 func (w *JobServer) register() error {
+	if w.leaseId == 0 {
+		roleLeaseId, err := w.etcd.GrantLease(TTL)
+		if err != nil {
+			return err
+		}
+		w.leaseId = roleLeaseId
+	}
 	jsonBuf, _ := MarshalJobDescription(&w.stats)
-	return w.etcd.KeepaliveWithTTL(context.Background(), JobKey(w.stats.Id), string(jsonBuf), TTL)
+	return w.etcd.InsertKV(context.Background(), JobKey(w.stats.Id), string(jsonBuf), w.leaseId)
 }
 
 func (w *JobServer) Stats() string {
@@ -81,4 +109,5 @@ func (w *JobServer) Stats() string {
 }
 
 func (w *JobServer) Close() {
+	w.ticker.Stop()
 }
