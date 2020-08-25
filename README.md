@@ -36,7 +36,7 @@ go build -o api cmd/api/main.go && ./api --etcd 172.3.0.122:2379 --port 23808
 ### 编程模型
 [A,B,C]  A->B->C 顺序执行
 
-[["a"],["a","b","c"], ["x.y.z"]]
+[["a"],["a","b","c"], ["x.y.z", "xxx"]]
 
 
 

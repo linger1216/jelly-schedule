@@ -2,12 +2,8 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"github.com/jmoiron/sqlx"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -19,72 +15,17 @@ type ExecutorConfig struct {
 }
 
 type Executor struct {
-	name string
-	etcd *Etcd
-	db   *sqlx.DB
-	// 用于检查是否有可用的workflow
+	name                string
+	etcd                *Etcd
+	db                  *sqlx.DB
 	CheckWorkFlowTicker *time.Ticker
-	// 用于执行workflow具体的cron
-	workFlowCron       *cron.Cron
-	executorContextMap map[string]*ExecutorContext
-
-	// prometheus
-	// 进度 gauge
-	// 响应时间
-	// 成功次数
-	// 失败次数
-	progress *Gauge
-	latency  *Histogram
-	success  *Counter
-	failed   *Counter
-
-	// stats
-	//newWorkFlowStatusCommandQueue
-	//statusQueue *WorkFlowStatusCommandQueue
+	workFlowCron        *cron.Cron
+	contexts            *SyncMap
 }
 
 type ExecutorContext struct {
 	stats *WorkFlowStatus
 	entry cron.EntryID
-}
-
-// Total duration of requests in seconds.
-func initPrometheus(e *Executor, port int) {
-	fieldKeys := []string{"name"}
-
-	e.progress = NewGaugeFrom(prometheus.GaugeOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "progress",
-		Help:      "Workflow or Job progress",
-	}, fieldKeys)
-
-	e.latency = NewHistogramFrom(prometheus.HistogramOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "latency",
-		Help:      "Workflow or Job exec latency",
-	}, fieldKeys)
-
-	e.success = NewCounterFrom(prometheus.CounterOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "success",
-		Help:      "Workflow or Job success count",
-	}, fieldKeys)
-
-	e.failed = NewCounterFrom(prometheus.CounterOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "failed",
-		Help:      "Workflow or Job failed count",
-	}, fieldKeys)
-
-	go func() {
-		m := http.NewServeMux()
-		m.Handle("/metrics", promhttp.Handler())
-		_ = http.ListenAndServe(fmt.Sprintf(":%d", port), m)
-	}()
 }
 
 func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
@@ -99,10 +40,7 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e.workFlowCron.Start()
 
 	e.name = config.Name
-	e.executorContextMap = make(map[string]*ExecutorContext)
-
-	// prometheus
-	// initPrometheus(e, config.MetricPort)
+	e.contexts = NewSyncMap()
 
 	// db
 	_, err := db.Exec(createWorkflowTableSql())
@@ -127,54 +65,82 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 			return e.exec(workflow)
 		}
 
-		etx, ok := e.executorContextMap[workflow.Id]
-		if !ok {
+		var ctx *ExecutorContext
+		if v, ok := e.contexts.Get(workflow.Id); ok {
+			ctx = v.(*ExecutorContext)
+		}
+
+		if ctx == nil {
 			panic("never impossiable")
 		}
 
+		if ctx.stats.Executing {
+			l.Debugf("workflow:%s executing, ignore...", workflow.Name)
+			ctx.stats.MaxExecuteCount++
+			if ctx.stats.MaxExecuteCount >= 64 {
+				e.workFlowCron.Remove(ctx.entry)
+				l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+				err := changeWorkFlowState(e.db, StateFailed, workflow)
+				if err != nil {
+					l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+				}
+			}
+			return
+		}
+
+		ctx.stats.Executing = true
+		defer func() {
+			ctx.stats.Executing = false
+		}()
+
 		now := time.Now()
-		ctx := context.Background()
-		resp, err := endpoint(ctx, workflow)
-		etx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
-		l.Debugf("workflow:%s exec duration:%d", workflow.Name, etx.stats.LastExecuteDuration)
+		resp, err := endpoint(context.Background(), workflow)
+		ctx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
+		l.Debugf("workflow:%s exec duration:%d", workflow.Name, ctx.stats.LastExecuteDuration)
 		if err != nil {
-			etx.stats.FailedExecuteCount++
+			ctx.stats.FailedExecuteCount++
 			l.Debugf("workflow:%s err:%v", workflow.Name, err.Error())
 		} else {
-			etx.stats.SuccessExecuteCount++
+			ctx.stats.SuccessExecuteCount++
 			l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
 		}
 
 		// 成功运行次数
 		// -1 代表无限
-		if workflow.SuccessLimit > 0 && etx.stats.SuccessExecuteCount >= workflow.SuccessLimit {
-			e.workFlowCron.Remove(etx.entry)
-			l.Debugf("workflow:%s remove cron:%d", workflow.Name, etx.entry)
-			changeWorkFlowState(e.db, StateFinish, workflow)
+		if workflow.SuccessLimit > 0 && ctx.stats.SuccessExecuteCount >= workflow.SuccessLimit {
+			e.workFlowCron.Remove(ctx.entry)
+			l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+			err = changeWorkFlowState(e.db, StateFinish, workflow)
+			if err != nil {
+				l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+			}
 			return
 		}
 
 		// 失败运行次数
 		// -1 代表无限
-		if workflow.FailedLimit > 0 && etx.stats.FailedExecuteCount >= workflow.FailedLimit {
-			e.workFlowCron.Remove(etx.entry)
-			l.Debugf("workflow:%s remove cron:%d", workflow.Name, etx.entry)
-			changeWorkFlowState(e.db, StateFailed, workflow)
+		if workflow.FailedLimit > 0 && ctx.stats.FailedExecuteCount >= workflow.FailedLimit {
+			e.workFlowCron.Remove(ctx.entry)
+			l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+			err = changeWorkFlowState(e.db, StateFailed, workflow)
+			if err != nil {
+				l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+			}
 			return
 		}
 	})
-
 	if err != nil {
 		return err
 	}
 
 	// 为workflow创建上下文Context
-	e.executorContextMap[workflow.Id] = &ExecutorContext{
+	e.contexts.Put(workflow.Id, &ExecutorContext{
 		stats: &WorkFlowStatus{
-			Id: workflow.Id,
+			Id:        workflow.Id,
+			Executing: false,
 		},
 		entry: entryId,
-	}
+	})
 
 	// 运行Cron任务
 	e.workFlowCron.Start()
@@ -359,7 +325,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		// 要将workflow的执行封装成endpoint
 		// 然后剥笋子来封装
 
-		//workflowContext, ok := e.executorContextMap[workflow.Id]
+		//workflowContext, ok := e.contexts[workflow.Id]
 		//if !ok || workflowContext == nil {
 		//	panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
 		//}
@@ -401,7 +367,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 	//}
 
 	// 为workflow创建上下文Context
-	//e.executorContextMap[workflow.Id] = &ExecutorContext{
+	//e.contexts[workflow.Id] = &ExecutorContext{
 	//	stats: &WorkFlowStatus{
 	//		Id: workflow.Id,
 	//	},
@@ -411,5 +377,45 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 	// 再次运行确认没问题
 	// e.workFlowCron.Start()
 	return nil
+}
+
+
+// Total duration of requests in seconds.
+func initPrometheus(e *Executor, port int) {
+	fieldKeys := []string{"name"}
+
+	e.progress = NewGaugeFrom(prometheus.GaugeOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "progress",
+		Help:      "Workflow or Job progress",
+	}, fieldKeys)
+
+	e.latency = NewHistogramFrom(prometheus.HistogramOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "latency",
+		Help:      "Workflow or Job exec latency",
+	}, fieldKeys)
+
+	e.success = NewCounterFrom(prometheus.CounterOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "success",
+		Help:      "Workflow or Job success count",
+	}, fieldKeys)
+
+	e.failed = NewCounterFrom(prometheus.CounterOpts{
+		Namespace: PrometheusNamespace,
+		Subsystem: PrometheusSubsystem,
+		Name:      "failed",
+		Help:      "Workflow or Job failed count",
+	}, fieldKeys)
+
+	go func() {
+		m := http.NewServeMux()
+		m.Handle("/metrics", promhttp.Handler())
+		_ = http.ListenAndServe(fmt.Sprintf(":%d", port), m)
+	}()
 }
 */

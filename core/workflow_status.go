@@ -5,6 +5,8 @@ package core
 //
 type WorkFlowStatus struct {
 	Id                  string
+	Executing           bool
+	MaxExecuteCount     int64
 	SuccessExecuteCount int64
 	FailedExecuteCount  int64
 	LastExecuteDuration int64

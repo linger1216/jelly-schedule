@@ -63,7 +63,7 @@ func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 		panic(err)
 	}
 
-	ticker := time.NewTicker(time.Duration(TTL/2) * time.Second)
+	ticker := time.NewTicker(time.Duration(TTL/3) * time.Second)
 	ret.ticker = ticker
 	go ret.handleTicker()
 

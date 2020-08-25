@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
 	"strings"
+	"time"
 )
 
 import _ "net/http/pprof"
@@ -21,6 +22,7 @@ func (e *EchoJob) Name() string {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
+	fmt.Printf("EchoJob:%d\n", time.Now().Unix())
 	cmds, err := core.ExactJobRequests(req)
 	if err != nil {
 		return nil, err

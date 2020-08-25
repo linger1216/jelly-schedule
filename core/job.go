@@ -8,8 +8,8 @@ type Endpoint func(ctx context.Context, request interface{}) (response interface
 type Middleware func(Endpoint) Endpoint
 
 type JobConfig struct {
-	Id   string `json:"id" yaml:"id" `
-	Host string `json:"host" yaml:"host" `
+	Ids  map[string]string `json:"ids" yaml:"ids" `
+	Host string            `json:"host" yaml:"host" `
 }
 
 type Job interface {

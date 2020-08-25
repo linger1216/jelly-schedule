@@ -7,6 +7,7 @@ type WorkFlow struct {
 	JobIds      [][]string `json:"jobIds,omitempty"`
 	Cron        string     `json:"cron,omitempty"`
 	Para        string     `json:"para"`
+
 	// 执行几次结束
 	SuccessLimit int64 `json:"successLimit" yaml:"successLimit" `
 	// 碰到错误的方式

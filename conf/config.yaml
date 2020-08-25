@@ -6,7 +6,10 @@ etcd:
 
 job:
   host: localhost
-  id: xxx
+  ids:
+    EchoJob: EchoJob-id
+    ShellJob: ShellJob-id
+    HttpJob: HttpJob-id
 
 postgres:
   uri: postgres://lid.guan:@localhost:15432/schedule?sslmode=disable

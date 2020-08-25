@@ -25,10 +25,10 @@ func StartClientJob(job Job) {
 			panic(err)
 		}
 	}
-
+	id, _ := config.Job.Ids[job.Name()]
 	end := make(chan error)
 	etcd := NewEtcd(&config.Etcd)
-	NewJobServer(etcd, config.Job.Id, job)
+	NewJobServer(etcd, id, job)
 	go utils.InterruptHandler(end)
 	<-end
 }
