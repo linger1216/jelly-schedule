@@ -1,5 +1,13 @@
 # jelly-schedule
 
+
+v0.1.0 基本版本
+
+### Todo
+- 每个任务增加是否立即实行,以及delay的时间参数 毕竟cron是要等下一个时间周期的
+
+
+
 ### linux
 env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o api_x cmd/api/main.go
 
