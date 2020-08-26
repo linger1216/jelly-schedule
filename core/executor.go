@@ -213,7 +213,6 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	if len(workFlows) == 0 {
 		return nil, nil
 	}
-
 	for i := range workFlows {
 		workFlows[i].State = StateExecuting
 	}
