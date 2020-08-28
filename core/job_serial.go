@@ -11,7 +11,7 @@ type SerialJob struct {
 	progress *atomic.Int32
 }
 
-func NewSerialJob(jobs []Job) *SerialJob {
+func NewSerialJob(jobs ...Job) *SerialJob {
 	return &SerialJob{jobs: jobs, progress: atomic.NewInt32(0)}
 }
 

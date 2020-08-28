@@ -11,10 +11,12 @@ import (
 type ParallelJob struct {
 	jobs     []Job
 	progress *atomic.Int32
+	mergeFn  MergeFunc
+	splitFn  SplitFunc
 }
 
-func NewParallelJob(jobs []Job) *ParallelJob {
-	return &ParallelJob{jobs: jobs, progress: atomic.NewInt32(0)}
+func NewParallelJob(splitFn SplitFunc, mergeFn MergeFunc, jobs ...Job) *ParallelJob {
+	return &ParallelJob{splitFn: splitFn, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
 }
 
 func (s *ParallelJob) Name() string {
@@ -30,26 +32,31 @@ func (s *ParallelJob) Progress() int {
 }
 
 func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	reqs, err := exactParallelRequest(req, len(s.jobs))
-	//l.Debugf("ParallelJob reqs:%v", reqs)
-	if err != nil {
-		return nil, err
+
+	size := len(s.jobs)
+	reqs := s.splitFn(req)
+	if len(reqs) != size {
+		l.Warnf("ParallelJob actural para size:%d, job:%d", len(reqs), size)
 	}
 
 	var rawErrors Errors
-	arr := make([]interface{}, len(s.jobs))
+	paras := make([]interface{}, len(s.jobs))
 	wg := sync.WaitGroup{}
 	for i := range s.jobs {
 		wg.Add(1)
 		go func(pos int) {
 			defer wg.Done()
 			defer s.progress.Add(int32(100 / len(s.jobs)))
-			resp, err := s.jobs[pos].Exec(ctx, reqs[pos])
+			var para interface{}
+			if pos < len(reqs) {
+				para = reqs[pos]
+			}
+			resp, err := s.jobs[pos].Exec(ctx, para)
 			if err != nil {
 				rawErrors = append(rawErrors, fmt.Errorf("[%d] err:%s", pos, err.Error()))
 				return
 			}
-			arr[pos] = resp
+			paras[pos] = resp
 		}(i)
 	}
 	wg.Wait()
@@ -58,5 +65,7 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 	if len(rawErrors) > 0 {
 		return nil, rawErrors
 	}
-	return arr, nil
+
+	// merge parameters
+	return s.mergeFn(paras...), nil
 }

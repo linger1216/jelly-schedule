@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"strings"
 	"time"
 
@@ -26,25 +25,25 @@ var (
       id                    varchar primary key,
       name                  varchar,
       description           varchar,
-			job_ids               varchar,
+			expression            varchar,
 			cron                  varchar,
       para                  varchar,
       success_limit         int,
-      failed_limit           int,
+      failed_limit          int,
       belong_executor       varchar,
 			state                 varchar,
       create_time           bigint default extract(epoch from now())::bigint,
       update_time           bigint default extract(epoch from now())::bigint
   );`
 	WorkflowTableSelectColumn  = `*`
-	WorkflowTableColumn        = `id,name,description,job_ids,cron,para,success_limit,failed_limit,belong_executor,state,create_time,update_time`
+	WorkflowTableColumn        = `id,name,description,expression,cron,para,success_limit,failed_limit,belong_executor,state,create_time,update_time`
 	WorkflowTableColumnSize    = len(strings.Split(WorkflowTableColumn, ","))
 	WorkflowTableOnConflictDDL = fmt.Sprintf(`
   on conflict (id) 
   do update set
   name = excluded.name,
   description = excluded.description, 
-	job_ids = excluded.job_ids,
+	expression = excluded.expression,
 	cron = excluded.cron,
   para = excluded.para,
   success_limit = excluded.success_limit,
@@ -86,11 +85,7 @@ func upsertWorkflowSql(workflows ...*WorkFlow) (string, []interface{}, error) {
 		}
 
 		values = append(values, utils.ValueInject(i, WorkflowTableColumnSize))
-		jsonBuf, err := jsoniter.ConfigFastest.Marshal(v.JobIds)
-		if err != nil {
-			return "", nil, err
-		}
-		args = append(args, v.Id, v.Name, v.Description, string(jsonBuf), v.Cron, v.Para, v.SuccessLimit, v.FailedLimit,
+		args = append(args, v.Id, v.Name, v.Description, v.Expression, v.Cron, v.Para, v.SuccessLimit, v.FailedLimit,
 			v.BelongExecutor, v.State, createTime, updateTime)
 	}
 	query := fmt.Sprintf(`insert into %s (%s) values %s %s`, WorkflowTableName, WorkflowTableColumn,

@@ -2,9 +2,10 @@ package core
 
 import (
 	"context"
+	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/jmoiron/sqlx"
+	"github.com/linger1216/jelly-schedule/parser"
 	"github.com/robfig/cron/v3"
-	"strings"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type ExecutorConfig struct {
 	Name                  string `json:"name" yaml:"name" `
 	CheckWorkFlowInterval int    `json:"checkWorkFlowInterval" yaml:"checkWorkFlowInterval" `
 	MetricPort            int    `json:"metricPort" yaml:"metricPort" `
+	Separate              string `json:"separate,omitempty" yaml:"separate" `
 }
 
 type Executor struct {
@@ -21,6 +23,8 @@ type Executor struct {
 	CheckWorkFlowTicker *time.Ticker
 	workFlowCron        *cron.Cron
 	contexts            *SyncMap
+	exprListener        *ExprListener
+	separate            string
 }
 
 type ExecutorContext struct {
@@ -34,20 +38,19 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	ticker := time.NewTicker(time.Duration(config.CheckWorkFlowInterval) * time.Second)
 	e.CheckWorkFlowTicker = ticker
 	e.workFlowCron = cron.New()
-
-	// todo
-	// 需要确认在这里合适与否
-	e.workFlowCron.Start()
-
 	e.name = config.Name
+	e.separate = config.Separate
+	if len(e.separate) == 0 {
+		e.separate = ";"
+	}
 	e.contexts = NewSyncMap()
-
-	// db
+	e.exprListener = NewExprListener(e.getJob, e.andJob, e.orJob)
 	_, err := db.Exec(createWorkflowTableSql())
 	if err != nil {
 		panic(err)
 	}
 
+	e.workFlowCron.Start()
 	go e.handleTicker()
 
 	l.Debugf("exec started.")
@@ -239,38 +242,13 @@ func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
 	if workFlow == nil {
 		return nil, ErrorInvalidPara
 	}
-	finalJob := NewSerialJob(nil)
-	// [["a"],["a","b","c"], ["x.y.z"]]
-	for _, jobGroup := range workFlow.JobIds {
-		parallelJobs := make([]Job, 0)
-		for _, group := range jobGroup {
-			ids := strings.Split(group, ",")
-			if len(ids) > 1 {
-				serial := NewSerialJob(nil)
-				for _, id := range ids {
-					job, err := e.getJob(id)
-					if err != nil {
-						return nil, err
-					}
-					serial.Append(job)
-				}
-				parallelJobs = append(parallelJobs, serial)
-			} else if len(ids) == 1 {
-				job, err := e.getJob(ids[0])
-				if err != nil {
-					return nil, err
-				}
-				parallelJobs = append(parallelJobs, job)
-			} else {
-				return nil, ErrJobNotFound
-			}
-		}
-		// 如果某个节点的job数量大于1
-		// 说明这个节点可以多个job同时运行
-		parallelJob := NewParallelJob(parallelJobs)
-		finalJob.Append(parallelJob)
-	}
-	return finalJob.Exec(context.Background(), workFlow.Para)
+	is := antlr.NewInputStream(workFlow.Expression)
+	lexer := parser.NewExprLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	p := parser.NewExprParser(stream)
+	antlr.ParseTreeWalkerDefault.Walk(e.exprListener, p.Start())
+	job := e.exprListener.Pop()
+	return job.Exec(context.Background(), workFlow.Para)
 }
 
 func (e *Executor) getJob(jobId string) (Job, error) {
@@ -283,6 +261,14 @@ func (e *Executor) getJob(jobId string) (Job, error) {
 		return nil, err
 	}
 	return info.ToJob(), nil
+}
+
+func (e *Executor) andJob(left, right Job) Job {
+	return NewSerialJob(left, right)
+}
+
+func (e *Executor) orJob(left, right Job) Job {
+	return NewParallelJob(SplitFactory(e.separate), MergeFactory(e.separate), left, right)
 }
 
 func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {
@@ -309,112 +295,82 @@ func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-
 	return nil
 }
-
-/*
-
-func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
-
-	// 为workflow创建定时任务
-	// entryId, err :=
-	e.workFlowCron.AddFunc(workflow.Cron, func() {
-
-		// 要将workflow的执行封装成endpoint
-		// 然后剥笋子来封装
-
-		//workflowContext, ok := e.contexts[workflow.Id]
-		//if !ok || workflowContext == nil {
-		//	panic(fmt.Sprintf("workflowContext %s invalid", workflow.Id))
-		//}
-
-		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
-			return e.execByPolicy(nil, workflow)
-		}
-
-
-
-
-
-		// endpoint = Instrumenting(e.latency, e.success, e.failed)(endpoint)
-
-		//
-		//state := StateFinish
-		//if err != nil {
-		//	l.Warnf("%s workflow err:%s", workflow.Name, err.Error())
-		//	state = StateFailed
-		//}
-
-		//err = changeWorkFlowState(e.db, state, workflow)
-		//
-		//if err != nil {
-		//	//l.Warnf("changeWorkFlowState workflow:%s err:%s", workflow.Name, err.Error())
-		//}
-		//l.Debugf("%s workflow run success", workflow.Name)
-
-		// 运行次数到了限定
-		// 退出
-		//if workflowContext.stats.SuccessExecuteCount.Load() >= int32(workflow.SuccessLimit) {
-		//	e.workFlowCron.Remove(workflowContext.entry)
-		//	return
-		//}
-	})
-
-	//if err != nil {
-	//	return err
-	//}
-
-	// 为workflow创建上下文Context
-	//e.contexts[workflow.Id] = &ExecutorContext{
-	//	stats: &WorkFlowStatus{
-	//		Id: workflow.Id,
-	//	},
-	//	entry: entryId,
-	//}
-
-	// 再次运行确认没问题
-	// e.workFlowCron.Start()
-	return nil
-}
-
 
 // Total duration of requests in seconds.
-func initPrometheus(e *Executor, port int) {
-	fieldKeys := []string{"name"}
+//func initPrometheus(e *Executor, port int) {
+//	fieldKeys := []string{"name"}
+//
+//	e.progress = NewGaugeFrom(prometheus.GaugeOpts{
+//		Namespace: PrometheusNamespace,
+//		Subsystem: PrometheusSubsystem,
+//		Name:      "progress",
+//		Help:      "Workflow or Job progress",
+//	}, fieldKeys)
+//
+//	e.latency = NewHistogramFrom(prometheus.HistogramOpts{
+//		Namespace: PrometheusNamespace,
+//		Subsystem: PrometheusSubsystem,
+//		Name:      "latency",
+//		Help:      "Workflow or Job exec latency",
+//	}, fieldKeys)
+//
+//	e.success = NewCounterFrom(prometheus.CounterOpts{
+//		Namespace: PrometheusNamespace,
+//		Subsystem: PrometheusSubsystem,
+//		Name:      "success",
+//		Help:      "Workflow or Job success count",
+//	}, fieldKeys)
+//
+//	e.failed = NewCounterFrom(prometheus.CounterOpts{
+//		Namespace: PrometheusNamespace,
+//		Subsystem: PrometheusSubsystem,
+//		Name:      "failed",
+//		Help:      "Workflow or Job failed count",
+//	}, fieldKeys)
+//
+//	go func() {
+//		m := http.NewServeMux()
+//		m.Handle("/metrics", promhttp.Handler())
+//		_ = http.ListenAndServe(fmt.Sprintf(":%d", port), m)
+//	}()
+//}
 
-	e.progress = NewGaugeFrom(prometheus.GaugeOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "progress",
-		Help:      "Workflow or Job progress",
-	}, fieldKeys)
-
-	e.latency = NewHistogramFrom(prometheus.HistogramOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "latency",
-		Help:      "Workflow or Job exec latency",
-	}, fieldKeys)
-
-	e.success = NewCounterFrom(prometheus.CounterOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "success",
-		Help:      "Workflow or Job success count",
-	}, fieldKeys)
-
-	e.failed = NewCounterFrom(prometheus.CounterOpts{
-		Namespace: PrometheusNamespace,
-		Subsystem: PrometheusSubsystem,
-		Name:      "failed",
-		Help:      "Workflow or Job failed count",
-	}, fieldKeys)
-
-	go func() {
-		m := http.NewServeMux()
-		m.Handle("/metrics", promhttp.Handler())
-		_ = http.ListenAndServe(fmt.Sprintf(":%d", port), m)
-	}()
-}
-*/
+//func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
+//	if workFlow == nil {
+//		return nil, ErrorInvalidPara
+//	}
+//	finalJob := NewSerialJob(nil)
+//	// [["a"],["a","b","c"], ["x.y.z"]]
+//	for _, jobGroup := range workFlow.Expression {
+//		parallelJobs := make([]Job, 0)
+//		for _, group := range jobGroup {
+//			ids := strings.Split(group, ",")
+//			if len(ids) > 1 {
+//				serial := NewSerialJob(nil)
+//				for _, id := range ids {
+//					job, err := e.getJob(id)
+//					if err != nil {
+//						return nil, err
+//					}
+//					serial.Append(job)
+//				}
+//				parallelJobs = append(parallelJobs, serial)
+//			} else if len(ids) == 1 {
+//				job, err := e.getJob(ids[0])
+//				if err != nil {
+//					return nil, err
+//				}
+//				parallelJobs = append(parallelJobs, job)
+//			} else {
+//				return nil, ErrJobNotFound
+//			}
+//		}
+//		// 如果某个节点的job数量大于1
+//		// 说明这个节点可以多个job同时运行
+//		parallelJob := NewParallelJob(parallelJobs)
+//		finalJob.Append(parallelJob)
+//	}
+//	return finalJob.Exec(context.Background(), workFlow.Para)
+//}

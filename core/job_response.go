@@ -1,14 +1,50 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"strings"
 )
 
 const (
-	SplitString = ";"
+	Separate = ";"
 )
+
+type MergeFunc func(paras ...interface{}) interface{}
+type SplitFunc func(paras interface{}) []interface{}
+
+func MergeFactory(sep string) MergeFunc {
+	return func(paras ...interface{}) interface{} {
+		return _merge(sep, paras...)
+	}
+}
+
+func SplitFactory(sep string) SplitFunc {
+	return func(paras interface{}) []interface{} {
+		return _split(sep, paras)
+	}
+}
+
+func _split(sep string, paras interface{}) []interface{} {
+	arr := strings.Split(paras.(string), sep)
+	ret := make([]interface{}, len(arr))
+	for i := range arr {
+		ret[i] = arr[i]
+	}
+	return ret
+}
+
+func _merge(sep string, paras ...interface{}) interface{} {
+	var buf bytes.Buffer
+	for i := range paras {
+		buf.WriteString(paras[i].(string))
+		if i < len(paras)-1 {
+			buf.WriteString(sep)
+		}
+	}
+	return buf.String()
+}
 
 func exactSerialRequest(req interface{}) interface{} {
 	var arg interface{}
@@ -32,7 +68,7 @@ func exactParallelRequest(req interface{}, size int) ([]interface{}, error) {
 		arr := make([]string, 0)
 		_ = jsoniter.ConfigFastest.Unmarshal([]byte(x), &arr)
 		if len(arr) == 0 {
-			arr = strings.Split(x, SplitString)
+			arr = strings.Split(x, Separate)
 		}
 		if len(arr) != size {
 			return nil, ErrorJobParaInvalid
@@ -59,7 +95,7 @@ func ExactJobRequests(req interface{}) ([]string, error) {
 		if len(args) > 0 {
 			break
 		}
-		arr := strings.Split(x, SplitString)
+		arr := strings.Split(x, Separate)
 		for i := range arr {
 			args = append(args, arr[i])
 		}

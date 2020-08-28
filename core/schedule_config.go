@@ -27,5 +27,9 @@ func loadScheduleConfig(buf []byte) (*ScheduleConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(ret.Executor.Separate) == 0 {
+		ret.Executor.Separate = ";"
+	}
 	return ret, nil
 }

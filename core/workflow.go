@@ -1,12 +1,15 @@
 package core
 
 type WorkFlow struct {
-	Id          string     `json:"id,omitempty"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	JobIds      [][]string `json:"jobIds,omitempty"`
-	Cron        string     `json:"cron,omitempty"`
-	Para        string     `json:"para"`
+	Id          string `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Expression  string `json:"expression,omitempty"`
+	Cron        string `json:"cron,omitempty"`
+	Para        string `json:"para"`
+
+	ExecutorWhenDeployed      bool  `json:"executor_when_deployed" yaml:"executor_when_deployed" `
+	ExecutorWhenDeployedDelay int64 `json:"executor_when_deployed_delay" yaml:"executor_when_deployed_delay" `
 
 	// 执行几次结束
 	SuccessLimit int64 `json:"successLimit" yaml:"successLimit" `

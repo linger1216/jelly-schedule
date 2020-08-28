@@ -24,3 +24,4 @@ executor:
   checkWorkFlowInterval: 10
   name: lid
   metricPort: 23809
+  separate: ";"
