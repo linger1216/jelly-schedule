@@ -64,10 +64,6 @@ func (e *Executor) close() {
 func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 	// 为workflow创建定时任务
 	entryId, err := e.workFlowCron.AddFunc(workflow.Cron, func() {
-		endpoint := func(ctx context.Context, request interface{}) (response interface{}, err error) {
-			return e.exec(workflow)
-		}
-
 		var ctx *ExecutorContext
 		if v, ok := e.contexts.Get(workflow.Id); ok {
 			ctx = v.(*ExecutorContext)
@@ -97,7 +93,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		}()
 
 		now := time.Now()
-		resp, err := endpoint(context.Background(), workflow)
+		resp, err := e.exec(workflow)
 		ctx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
 		l.Debugf("workflow:%s exec duration:%d", workflow.Name, ctx.stats.LastExecuteDuration)
 		if err != nil {
@@ -238,9 +234,9 @@ func (e *Executor) getAvaiableWorkFLow(query string) ([]*WorkFlow, error) {
 	return workFlows, nil
 }
 
-func (e *Executor) exec(workFlow *WorkFlow) (interface{}, error) {
+func (e *Executor) exec(workFlow *WorkFlow) (string, error) {
 	if workFlow == nil {
-		return nil, ErrorInvalidPara
+		return "", ErrorInvalidPara
 	}
 	is := antlr.NewInputStream(workFlow.Expression)
 	lexer := parser.NewExprLexer(is)

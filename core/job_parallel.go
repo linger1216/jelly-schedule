@@ -31,7 +31,7 @@ func (s *ParallelJob) Progress() int {
 	return int(s.progress.Load())
 }
 
-func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
+func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 
 	size := len(s.jobs)
 	reqs := s.splitFn(req)
@@ -40,14 +40,14 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 	}
 
 	var rawErrors Errors
-	paras := make([]interface{}, len(s.jobs))
+	paras := make([]string, len(s.jobs))
 	wg := sync.WaitGroup{}
 	for i := range s.jobs {
 		wg.Add(1)
 		go func(pos int) {
 			defer wg.Done()
 			defer s.progress.Add(int32(100 / len(s.jobs)))
-			var para interface{}
+			var para string
 			if pos < len(reqs) {
 				para = reqs[pos]
 			}
@@ -63,7 +63,7 @@ func (s *ParallelJob) Exec(ctx context.Context, req interface{}) (interface{}, e
 	s.progress.CAS(int32(s.Progress()), 100)
 
 	if len(rawErrors) > 0 {
-		return nil, rawErrors
+		return "", rawErrors
 	}
 
 	// merge parameters

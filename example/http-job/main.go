@@ -5,6 +5,7 @@ import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/linger1216/jelly-schedule/core"
+	"github.com/linger1216/jelly-schedule/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -29,10 +30,10 @@ func (e *HttpJob) Name() string {
 	return "HttpJob"
 }
 
-func (e *HttpJob) Exec(ctx context.Context, req interface{}) (interface{}, error) {
-	cmds, err := core.ExactJobRequests(req)
+func (e *HttpJob) Exec(ctx context.Context, req string) (string, error) {
+	cmds, err := utils.ExactStringArrayRequests(req, ";")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	var resp []byte
@@ -40,11 +41,11 @@ func (e *HttpJob) Exec(ctx context.Context, req interface{}) (interface{}, error
 		httpRequest := &HttpRequest{}
 		err = jsoniter.ConfigFastest.Unmarshal([]byte(cmd), httpRequest)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		resp, err = doHttpRequest(httpRequest)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 	return string(resp), nil

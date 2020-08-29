@@ -12,6 +12,9 @@ import (
 	"github.com/rs/cors"
 )
 
+type Endpoint func(ctx context.Context, req interface{}) (resp interface{}, err error)
+type Middleware func(Endpoint) Endpoint
+
 type HandleFunc func(w http.ResponseWriter, r *http.Request)
 type DecodeRequestFunc func(r *http.Request) (interface{}, error)
 type encodeResponseFunc func(w http.ResponseWriter, response interface{}) error

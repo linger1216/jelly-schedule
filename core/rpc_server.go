@@ -14,14 +14,11 @@ const (
 	JsonRPCPath = `/rpc`
 )
 
-type Request interface{}
-type Response interface{}
-
 type JsonRPCService struct {
 	job Job
 }
 
-func (j *JsonRPCService) Exec(r *http.Request, arg *Request, result *Response) error {
+func (j *JsonRPCService) Exec(r *http.Request, arg *string, result *string) error {
 	resp, err := j.job.Exec(context.Background(), *arg)
 	if err != nil {
 		return err

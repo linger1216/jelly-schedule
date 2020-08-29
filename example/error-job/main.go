@@ -20,9 +20,9 @@ func (e *ErrorJob) Name() string {
 	return "ErrorJob"
 }
 
-func (e *ErrorJob) Exec(ctx context.Context, req interface{}) (resp interface{}, err error) {
+func (e *ErrorJob) Exec(ctx context.Context, req string) (resp string, err error) {
 	fmt.Printf("ErrorJob:%d\n", time.Now().Unix())
-	return nil, fmt.Errorf("fake error")
+	return "", fmt.Errorf("fake error:%s", req)
 }
 
 func main() {
