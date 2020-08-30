@@ -32,7 +32,7 @@ go build -o build/bin/echo-job example/echo-job/main.go
 go build -o build/bin/shell-job example/shell-job/main.go
 go build -o build/bin/http-job example/http-job/main.go
 go build -o build/bin/error-job example/error-job/main.go
-
+cp conf/config.yaml build/bin/
 # locker
 #go build -o build/bin/locker1 cmd/locker/*.go
 #go build -o build/bin/locker2 cmd/locker/*.go

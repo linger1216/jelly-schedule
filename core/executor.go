@@ -93,7 +93,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		}()
 
 		now := time.Now()
-		resp, err := e.exec(workflow)
+		_, err := e.exec(workflow)
 		ctx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
 		l.Debugf("workflow:%s exec duration:%d", workflow.Name, ctx.stats.LastExecuteDuration)
 		if err != nil {
@@ -101,7 +101,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 			l.Debugf("workflow:%s err:%v", workflow.Name, err.Error())
 		} else {
 			ctx.stats.SuccessExecuteCount++
-			l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
+			//l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
 		}
 
 		// 成功运行次数

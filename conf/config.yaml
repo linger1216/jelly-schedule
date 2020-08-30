@@ -1,15 +1,16 @@
 # schedule config
 
 etcd:
-  uri: 172.3.0.122:2379
+  uri: 172.3.0.103:2379
   timeout: 5
 
 job:
   host: localhost
   ids:
-    EchoJob: EchoJob-id
-    ShellJob: ShellJob-id
-    HttpJob: HttpJob-id
+    ErrorJob: ErrorJob_id
+    EchoJob: EchoJob_id
+    ShellJob: ShellJob_id
+    HttpJob: HttpJob_id
 
 postgres:
   uri: postgres://lid.guan:@localhost:15432/schedule?sslmode=disable

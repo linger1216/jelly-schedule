@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
-	"strings"
 	"time"
 )
 
@@ -23,12 +21,8 @@ func (e *EchoJob) Name() string {
 }
 
 func (e *EchoJob) Exec(ctx context.Context, req string) (resp string, err error) {
-	fmt.Printf("EchoJob:%d\n", time.Now().Unix())
-	cmds, err := utils.ExactStringArrayRequests(req, ";")
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("echo:%s\n", strings.Join(cmds, ",")), nil
+	fmt.Printf("echo:%s (%d)\n", req, time.Now().Unix())
+	return req, nil
 }
 
 func main() {
