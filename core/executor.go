@@ -50,7 +50,7 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e.workFlowCron.Start()
 	go e.handleTicker()
 
-	WithModule(ModuleExecutorValue).Debugf("exec started.")
+	_M(LE).Debugf("exec started.")
 	return e
 }
 
@@ -71,14 +71,14 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		}
 
 		if ctx.stats.Executing {
-			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("executing, ignore...")
+			_M(LE).With(LW, workflow.Name).Debugf("executing, ignore...")
 			ctx.stats.MaxExecuteCount++
 			if ctx.stats.MaxExecuteCount >= 64 {
 				e.workFlowCron.Remove(ctx.entry)
-				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
+				_M(LE).With(LW, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 				err := changeWorkFlowState(e.db, StateFailed, workflow)
 				if err != nil {
-					WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
+					_M(LE).With(LW, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 				}
 			}
 			return
@@ -92,11 +92,11 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		now := time.Now()
 		_, err := e.exec(workflow)
 		ctx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
-		WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).
+		_M(LE).With(LW, workflow.Name).
 			Debugf("exec duration:%ds", ctx.stats.LastExecuteDuration)
 		if err != nil {
 			ctx.stats.FailedExecuteCount++
-			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("exec err:%s", err.Error())
+			_M(LE).With(LW, workflow.Name).Debugf("exec err:%s", err.Error())
 		} else {
 			ctx.stats.SuccessExecuteCount++
 			//l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
@@ -106,10 +106,10 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		// -1 代表无限
 		if workflow.SuccessLimit > 0 && ctx.stats.SuccessExecuteCount >= workflow.SuccessLimit {
 			e.workFlowCron.Remove(ctx.entry)
-			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
+			_M(LE).With(LW, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 			err = changeWorkFlowState(e.db, StateFinish, workflow)
 			if err != nil {
-				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
+				_M(LE).With(LW, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 			}
 			return
 		}
@@ -118,10 +118,10 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		// -1 代表无限
 		if workflow.FailedLimit > 0 && ctx.stats.FailedExecuteCount >= workflow.FailedLimit {
 			e.workFlowCron.Remove(ctx.entry)
-			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
+			_M(LE).With(LW, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 			err = changeWorkFlowState(e.db, StateFailed, workflow)
 			if err != nil {
-				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
+				_M(LE).With(LW, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 			}
 			return
 		}
@@ -141,7 +141,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 
 	// 运行Cron任务
 	e.workFlowCron.Start()
-	WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("add cron:%d", entryId)
+	_M(LE).With(LW, workflow.Name).Debugf("add cron:%d", entryId)
 	return nil
 }
 

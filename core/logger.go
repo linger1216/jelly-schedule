@@ -9,6 +9,17 @@ var (
 	l      *zap.SugaredLogger
 )
 
+const (
+	// logger const field
+	ProjectKey   = "project"
+	ProjectValue = "schedule"
+
+	LM = "module"
+	LE = "executor"
+	LW = "workflow"
+	LJ = "job"
+)
+
 func init() {
 	logger, _ = zap.NewDevelopment()
 	//logger, _ = zap.NewProduction()
@@ -16,14 +27,14 @@ func init() {
 }
 
 // func (s *SugaredLogger) Debugf(template string, args ...interface{}) {
-func WithModule(name string) *zap.SugaredLogger {
-	return l.With(ModuleKey, name)
+func _M(name string) *zap.SugaredLogger {
+	return l.With(LM, name)
 }
 
-func WithWorflow(name string) *zap.SugaredLogger {
-	return l.With(WorkFlowKey, name)
+func _W(name string) *zap.SugaredLogger {
+	return l.With(LW, name)
 }
 
-func WithJob(name string) *zap.SugaredLogger {
-	return l.With(JobKey, name)
+func _J(name string) *zap.SugaredLogger {
+	return l.With(LJ, name)
 }
