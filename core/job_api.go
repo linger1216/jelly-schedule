@@ -91,7 +91,7 @@ func (w *jobAPI) getJob(ctx context.Context, req interface{}) (interface{}, erro
 	}
 	resp := NewGetJobResponse()
 	for i := range request.ids {
-		v, err := w.etcd.Get(ctx, JobKey(request.ids[i]))
+		v, err := w.etcd.Get(ctx, genJobKey(request.ids[i]))
 		if err != nil {
 			return nil, err
 		}

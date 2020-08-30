@@ -32,7 +32,6 @@ type ExecutorContext struct {
 }
 
 func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
-
 	e := &Executor{etcd: etcd, db: db}
 	ticker := time.NewTicker(time.Duration(config.CheckWorkFlowInterval) * time.Second)
 	e.CheckWorkFlowTicker = ticker
@@ -51,7 +50,7 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 	e.workFlowCron.Start()
 	go e.handleTicker()
 
-	l.Debugf("exec started.")
+	WithModule(ModuleExecutorValue).Debugf("exec started.")
 	return e
 }
 
@@ -72,14 +71,14 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		}
 
 		if ctx.stats.Executing {
-			l.Debugf("workflow:%s executing, ignore...", workflow.Name)
+			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("executing, ignore...")
 			ctx.stats.MaxExecuteCount++
 			if ctx.stats.MaxExecuteCount >= 64 {
 				e.workFlowCron.Remove(ctx.entry)
-				l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 				err := changeWorkFlowState(e.db, StateFailed, workflow)
 				if err != nil {
-					l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+					WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 				}
 			}
 			return
@@ -93,10 +92,11 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		now := time.Now()
 		_, err := e.exec(workflow)
 		ctx.stats.LastExecuteDuration = int64(time.Since(now).Seconds())
-		l.Debugf("workflow:%s exec duration:%d", workflow.Name, ctx.stats.LastExecuteDuration)
+		WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).
+			Debugf("exec duration:%ds", ctx.stats.LastExecuteDuration)
 		if err != nil {
 			ctx.stats.FailedExecuteCount++
-			l.Debugf("workflow:%s err:%v", workflow.Name, err.Error())
+			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("exec err:%s", err.Error())
 		} else {
 			ctx.stats.SuccessExecuteCount++
 			//l.Debugf("workflow:%s resp:%v", workflow.Name, resp)
@@ -106,10 +106,10 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		// -1 代表无限
 		if workflow.SuccessLimit > 0 && ctx.stats.SuccessExecuteCount >= workflow.SuccessLimit {
 			e.workFlowCron.Remove(ctx.entry)
-			l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 			err = changeWorkFlowState(e.db, StateFinish, workflow)
 			if err != nil {
-				l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 			}
 			return
 		}
@@ -118,10 +118,10 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 		// -1 代表无限
 		if workflow.FailedLimit > 0 && ctx.stats.FailedExecuteCount >= workflow.FailedLimit {
 			e.workFlowCron.Remove(ctx.entry)
-			l.Debugf("workflow:%s remove cron:%d", workflow.Name, ctx.entry)
+			WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("remove cron:%d", ctx.entry)
 			err = changeWorkFlowState(e.db, StateFailed, workflow)
 			if err != nil {
-				l.Debugf("workflow:%s changeWorkFlowState err:%s", workflow.Name, err.Error())
+				WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
 			}
 			return
 		}
@@ -141,7 +141,7 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 
 	// 运行Cron任务
 	e.workFlowCron.Start()
-	l.Debugf("workflow:%s add cron:%d", workflow.Name, entryId)
+	WithModule(ModuleExecutorValue).With(WorkFlowKey, workflow.Name).Debugf("add cron:%d", entryId)
 	return nil
 }
 
@@ -250,7 +250,7 @@ func (e *Executor) exec(workFlow *WorkFlow) (string, error) {
 }
 
 func (e *Executor) getJob(jobId string) (Job, error) {
-	buf, err := e.etcd.Get(context.Background(), JobKey(jobId))
+	buf, err := e.etcd.Get(context.Background(), genJobKey(jobId))
 	if err != nil {
 		return nil, err
 	}

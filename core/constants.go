@@ -15,6 +15,17 @@ const (
 	// prometheus
 	PrometheusNamespace = "Jelly"
 	PrometheusSubsystem = "Schedule"
+
+	// logger const field
+	ProjectKey   = "project"
+	ProjectValue = "schedule"
+
+	ModuleKey           = "module"
+	ModuleExecutorValue = "executor"
+	ModuleJobValue      = "job"
+
+	WorkFlowKey = "workflow"
+	JobKey      = "job"
 )
 
 var (

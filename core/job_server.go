@@ -16,7 +16,7 @@ var (
 	TTL       = int64(10)
 )
 
-func JobKey(id string) string {
+func genJobKey(id string) string {
 	s := JobFormat.ExecuteString(map[string]interface{}{
 		"Name": id,
 	})
@@ -73,7 +73,7 @@ func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 
 func (w *JobServer) register() error {
 	jsonBuf, _ := MarshalJobDescription(&w.stats)
-	return w.etcd.KeepaliveWithTTL(context.Background(), JobKey(w.stats.Id), string(jsonBuf), TTL)
+	return w.etcd.KeepaliveWithTTL(context.Background(), genJobKey(w.stats.Id), string(jsonBuf), TTL)
 }
 
 func (w *JobServer) Stats() string {
