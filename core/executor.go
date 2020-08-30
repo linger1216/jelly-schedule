@@ -23,7 +23,6 @@ type Executor struct {
 	CheckWorkFlowTicker *time.Ticker
 	workFlowCron        *cron.Cron
 	contexts            *SyncMap
-	exprListener        *ExprListener
 	separate            string
 }
 
@@ -44,7 +43,6 @@ func NewExecutor(etcd *Etcd, db *sqlx.DB, config ExecutorConfig) *Executor {
 		e.separate = ";"
 	}
 	e.contexts = NewSyncMap()
-	e.exprListener = NewExprListener(e.getJob, e.andJob, e.orJob)
 	_, err := db.Exec(createWorkflowTableSql())
 	if err != nil {
 		panic(err)
@@ -242,8 +240,12 @@ func (e *Executor) exec(workFlow *WorkFlow) (string, error) {
 	lexer := parser.NewExprLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	p := parser.NewExprParser(stream)
-	antlr.ParseTreeWalkerDefault.Walk(e.exprListener, p.Start())
-	job := e.exprListener.Pop()
+	exprListener := NewExprListener(e.getJob, e.andJob, e.orJob)
+	antlr.ParseTreeWalkerDefault.Walk(exprListener, p.Start())
+	if exprListener.err != nil {
+		return "", exprListener.err
+	}
+	job := exprListener.Pop()
 	return job.Exec(context.Background(), workFlow.Para)
 }
 

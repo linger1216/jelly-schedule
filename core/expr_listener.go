@@ -8,6 +8,7 @@ import (
 
 // func (e *Executor) getJob(jobId string) (Job, error) {
 type ExprListener struct {
+	err   error
 	stack []Job
 	getFn func(string) (Job, error)
 	andFn func(left, right Job) Job
@@ -18,7 +19,11 @@ func NewExprListener(
 	getFn func(string) (Job, error),
 	andFn func(left, right Job) Job,
 	orFn func(left, right Job) Job) *ExprListener {
-	return &ExprListener{getFn: getFn, andFn: andFn, orFn: orFn}
+	return &ExprListener{err: nil, getFn: getFn, andFn: andFn, orFn: orFn}
+}
+
+func (e *ExprListener) error() error {
+	return e.err
 }
 
 func (e *ExprListener) push(i Job) {
@@ -65,6 +70,10 @@ func (e *ExprListener) ExitParenthesis(c *parser.ParenthesisContext) {
 }
 
 func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
+	if e.err != nil {
+		return
+	}
+
 	right, left := e.Pop(), e.Pop()
 	fmt.Printf("left:%s right:%s\n", left.Name(), right.Name())
 	switch c.GetOp().GetTokenType() {
@@ -78,9 +87,18 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 }
 
 func (e *ExprListener) ExitID(c *parser.IDContext) {
+	if e.err != nil {
+		return
+	}
+
 	job, err := e.getFn(c.GetText())
 	if err != nil {
-		panic(err)
+		l.Debugf("job:%s not found err:%s", c.GetText(), err.Error())
+		e.err = err
+		return
 	}
-	e.push(job)
+
+	if job != nil {
+		e.push(job)
+	}
 }
