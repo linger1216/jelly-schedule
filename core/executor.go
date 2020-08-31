@@ -72,15 +72,15 @@ func (e *Executor) execWorkFlowCron(workflow *WorkFlow) error {
 
 		if ctx.stats.Executing {
 			_MOD(_Exec).With(_Workflow, workflow.Name).Debugf("executing, ignore...")
-			ctx.stats.MaxExecuteCount++
-			if ctx.stats.MaxExecuteCount >= 64 {
-				e.workFlowCron.Remove(ctx.entry)
-				_MOD(_Exec).With(_Workflow, workflow.Name).Debugf("remove cron:%d", ctx.entry)
-				err := changeWorkFlowState(e.db, StateFailed, workflow)
-				if err != nil {
-					_MOD(_Exec).With(_Workflow, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
-				}
-			}
+			//ctx.stats.MaxExecuteCount++
+			//if ctx.stats.MaxExecuteCount >= 64 {
+			//	e.workFlowCron.Remove(ctx.entry)
+			//	_MOD(_Exec).With(_Workflow, workflow.Name).Debugf("remove cron:%d", ctx.entry)
+			//	err := changeWorkFlowState(e.db, StateFailed, workflow)
+			//	if err != nil {
+			//		_MOD(_Exec).With(_Workflow, workflow.Name).Debugf("changeWorkFlowState err:%s", err.Error())
+			//	}
+			//}
 			return
 		}
 
