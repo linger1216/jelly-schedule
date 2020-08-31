@@ -75,7 +75,7 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 	}
 
 	right, left := e.Pop(), e.Pop()
-	_MOD(_Expr).Debugf("left:%s right:%s")
+	_MOD(_Expr).Debugf("parser left:%s right:%s")
 	switch c.GetOp().GetTokenType() {
 	case parser.ExprLexerAND:
 		e.push(e.andFn(left, right))
