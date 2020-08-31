@@ -14,10 +14,11 @@ const (
 	ProjectKey   = "project"
 	ProjectValue = "schedule"
 
-	LM = "module"
-	LE = "executor"
-	LW = "workflow"
-	LJ = "job"
+	_Mod      = "module"
+	_Exec     = "executor"
+	_Workflow = "workflow"
+	_Expr     = "expr"
+	_Job      = "job"
 )
 
 func init() {
@@ -27,14 +28,14 @@ func init() {
 }
 
 // func (s *SugaredLogger) Debugf(template string, args ...interface{}) {
-func _M(name string) *zap.SugaredLogger {
-	return l.With(LM, name)
+func _MOD(name string) *zap.SugaredLogger {
+	return l.With(_Mod, name)
 }
 
 func _W(name string) *zap.SugaredLogger {
-	return l.With(LW, name)
+	return l.With(_Workflow, name)
 }
 
 func _J(name string) *zap.SugaredLogger {
-	return l.With(LJ, name)
+	return l.With(_Job, name)
 }

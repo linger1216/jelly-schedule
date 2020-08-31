@@ -75,7 +75,7 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 	}
 
 	right, left := e.Pop(), e.Pop()
-	fmt.Printf("left:%s right:%s\n", left.Name(), right.Name())
+	_MOD(_Expr).Debugf("left:%s right:%s")
 	switch c.GetOp().GetTokenType() {
 	case parser.ExprLexerAND:
 		e.push(e.andFn(left, right))
@@ -93,7 +93,7 @@ func (e *ExprListener) ExitID(c *parser.IDContext) {
 
 	job, err := e.getFn(c.GetText())
 	if err != nil {
-		l.Debugf("job:%s not found err:%s", c.GetText(), err.Error())
+		_MOD(_Expr).With(_Job, c.GetText()).Debugf("not found")
 		e.err = err
 		return
 	}
