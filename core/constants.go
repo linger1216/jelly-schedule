@@ -26,6 +26,7 @@ var (
 
 	// api
 	ErrBadRequest    = newApiError(http.StatusBadRequest, "StatusBadRequest")
+	ErrBadCronExpr    = newApiError(http.StatusBadRequest, "ErrBadCronExpr")
 	ErrorInvalidPara = newApiError(http.StatusBadRequest, "ErrorInvalidPara")
 	ErrNotFound      = newApiError(http.StatusNotFound, "ErrNotFound")
 )

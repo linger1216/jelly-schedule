@@ -80,6 +80,7 @@ type scheduleAPI struct {
 	job     *jobAPI
 	worflow *workFlowAPI
 	config  *HttpConfig
+	cron *cronAPI
 }
 
 type HttpConfig struct {
@@ -88,7 +89,7 @@ type HttpConfig struct {
 }
 
 func NewScheduleAPI(etcd *Etcd, db *sqlx.DB, config *HttpConfig) *scheduleAPI {
-	api := &scheduleAPI{job: NewJobAPI(etcd), worflow: NewWorkflowAPI(db), config: config}
+	api := &scheduleAPI{cron: NewCronAPI(), job: NewJobAPI(etcd), worflow: NewWorkflowAPI(db), config: config}
 	return api
 }
 
@@ -141,6 +142,12 @@ func (w *scheduleAPI) Start() error {
 	// get 工作流
 	m.HandleFunc("/schedule/workflow/{ids}",
 		HandleFuncWrapper(decodeGetWorkflowRequest, w.worflow.GetWorkflow, encodeHTTPWorkflowResponse)).
+		Methods("GET")
+
+
+	// cron
+	m.HandleFunc("/schedule/cron/expr",
+		HandleFuncWrapper(decodeGetCronRequest, w.cron.GetCron, encodeHTTPGenericResponse)).
 		Methods("GET")
 
 	l.Debugf("api start: %d", w.config.Port)
