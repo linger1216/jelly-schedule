@@ -12,7 +12,7 @@ import (
 const DefaultConfigFilename = "/etc/config/schedule_config.yaml"
 
 func LoadUserConfig(field string, obj interface{}) error {
-	configFilename := kingpin.Flag("conf", "config file name").Short('c').Default(core.DefaultConfigFilename).String()
+	configFilename := kingpin.Flag("conf", "config file name").Short('c').Default(DefaultConfigFilename).String()
 	kingpin.Version("0.1.0")
 	kingpin.Parse()
 
