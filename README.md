@@ -8,12 +8,13 @@
 v0.1.0 基本版本
 
 ### Todo
+- 参数的规范化设计
 - 每个任务增加是否立即实行,以及delay的时间参数 毕竟cron是要等下一个时间周期的
 - 基于name的选择job执行(目前是基于id), 考虑到打洞
 - 完善文档 (可能永远都不会完成)
-- 对参数的强制限定
+
 - k8s支持
-- jobId 不存在的时候, 任务执行失败
+- ~~jobId 不存在的时候, 任务执行失败~~
 
 
 ### linux
@@ -60,6 +61,8 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 参考:
 1. https://github.com/betterde/ects
 2. https://github.com/busgo/forest
+
+
 
 
 
