@@ -80,7 +80,12 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 	case parser.ExprLexerAND:
 		e.push(e.andFn(left, right))
 	case parser.ExprLexerOR:
-		e.push(e.orFn(left, right))
+		if v, ok := left.(*ParallelJob); ok {
+			v.jobs = append(v.jobs, right)
+			e.push(left)
+		} else {
+			e.push(e.orFn(left, right))
+		}
 	default:
 		panic(fmt.Sprintf("unexpected op: %s", c.GetOp().GetText()))
 	}
