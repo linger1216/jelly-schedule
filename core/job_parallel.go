@@ -9,14 +9,15 @@ import (
 )
 
 type ParallelJob struct {
+	sep      string
 	jobs     []Job
 	progress *atomic.Int32
 	mergeFn  MergeFunc
 	splitFn  SplitFunc
 }
 
-func NewParallelJob(splitFn SplitFunc, mergeFn MergeFunc, jobs ...Job) *ParallelJob {
-	return &ParallelJob{splitFn: splitFn, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
+func NewParallelJob(sep string, splitFn SplitFunc, mergeFn MergeFunc, jobs ...Job) *ParallelJob {
+	return &ParallelJob{sep: sep, splitFn: splitFn, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
 }
 
 func (s *ParallelJob) Name() string {
@@ -36,7 +37,11 @@ func (s *ParallelJob) Progress() int {
 func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 
 	size := len(s.jobs)
-	reqs := s.splitFn(req)
+	reqs, err := s.splitFn(s.sep, req)
+	if err != nil {
+		return "", err
+	}
+
 	if len(reqs) != size {
 		l.Warnf("ParallelJob actural para size:%d, job:%d", len(reqs), size)
 	}
@@ -70,5 +75,5 @@ func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 	}
 
 	// merge parameters
-	return s.mergeFn(paras...), nil
+	return s.mergeFn(s.sep, paras...)
 }

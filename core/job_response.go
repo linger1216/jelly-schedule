@@ -1,49 +1,5 @@
 package core
 
-import (
-	"bytes"
-	"strings"
-)
-
-const (
-	Separate = ";"
-)
-
-type MergeFunc func(paras ...string) string
-type SplitFunc func(paras string) []string
-
-func MergeFactory(sep string) MergeFunc {
-	return func(paras ...string) string {
-		return _merge(sep, paras...)
-	}
-}
-
-func SplitFactory(sep string) SplitFunc {
-	return func(paras string) []string {
-		return _split(sep, paras)
-	}
-}
-
-func _split(sep string, paras string) []string {
-	arr := strings.Split(paras, sep)
-	ret := make([]string, len(arr))
-	for i := range arr {
-		ret[i] = arr[i]
-	}
-	return ret
-}
-
-func _merge(sep string, paras ...string) string {
-	var buf bytes.Buffer
-	for i := range paras {
-		buf.WriteString(paras[i])
-		if i < len(paras)-1 {
-			buf.WriteString(sep)
-		}
-	}
-	return buf.String()
-}
-
 //
 //func exactSerialRequest(req string) string {
 //	var arg string

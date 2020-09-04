@@ -2,17 +2,19 @@ package core
 
 import (
 	"context"
+	jsoniter "github.com/json-iterator/go"
 	"go.uber.org/atomic"
 	"strings"
 )
 
 type SerialJob struct {
+	sep      string
 	jobs     []Job
 	progress *atomic.Int32
 }
 
-func NewSerialJob(jobs ...Job) *SerialJob {
-	return &SerialJob{jobs: jobs, progress: atomic.NewInt32(0)}
+func NewSerialJob(sep string, jobs ...Job) *SerialJob {
+	return &SerialJob{sep: sep, jobs: jobs, progress: atomic.NewInt32(0)}
 }
 
 func (s *SerialJob) Append(job Job) {
@@ -32,10 +34,33 @@ func (s *SerialJob) Progress() int {
 }
 
 func (s *SerialJob) Exec(ctx context.Context, req string) (string, error) {
+	// 串行任务收到的永远是一个request
+	// 并行任务收到的可能是一个request或者[]request
 	arg := req
 	//l.Debugf("SerialJob reqs:%v", arg)
 	for i := range s.jobs {
-		resp, err := s.jobs[i].Exec(ctx, arg)
+		// 后面有n个并发任务, 检查参数是不是要分割
+		n := 1
+		switch x := s.jobs[i].(type) {
+		case *SerialJob:
+		case *ParallelJob:
+			n = len(x.jobs)
+		}
+
+		jobRequest := NewJobRequest()
+		if err := jsoniter.ConfigFastest.UnmarshalFromString(arg, jobRequest); err != nil {
+			return "", err
+		}
+
+		if err := jobRequest.gen(); err != nil {
+			return "", err
+		}
+
+		jobRequestsStr, err := marshalJobRequests(s.sep, jobRequest.split(n)...)
+		if err != nil {
+			return "", err
+		}
+		resp, err := s.jobs[i].Exec(ctx, jobRequestsStr)
 		if err != nil {
 			return "", err
 		}
