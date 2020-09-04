@@ -26,7 +26,7 @@ func (s *SerialJob) Name() string {
 	for _, v := range s.jobs {
 		names = append(names, v.Name())
 	}
-	return strings.Join(names, "-")
+	return strings.Join(names, "->")
 }
 
 func (s *SerialJob) Progress() int {
