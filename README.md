@@ -64,5 +64,5 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 
 
 
-
+antlr4 -Dlanguage=Go -o parser Expr.g4
 
