@@ -36,23 +36,23 @@ func (s *AlternateJob) Progress() int {
 
 func (s *AlternateJob) Exec(ctx context.Context, req string) (string, error) {
 
-	jobRequest := NewJobRequest()
-	if err := jsoniter.ConfigFastest.UnmarshalFromString(req, jobRequest); err != nil {
+	rawRequest := NewJobRequest()
+	if err := jsoniter.ConfigFastest.UnmarshalFromString(req, rawRequest); err != nil {
 		return "", err
 	}
-	if err := jobRequest.gen(); err != nil {
+	if err := rawRequest.gen(); err != nil {
 		return "", err
 	}
 
-	resps := make([]string, 0, len(jobRequest.Values))
-	for i := range jobRequest.Values {
+	resps := make([]string, 0, len(rawRequest.Values))
+	for i := range rawRequest.Values {
 
 		_MOD(_AlternateJob).With(_Job, s.Name()).Debugf("req :%s", req)
 
 		// 产生一个新的request
 		singleRequest := NewJobRequest()
-		singleRequest.Values = append(singleRequest.Values, jobRequest.Values[i])
-		for k, v := range jobRequest.Meta {
+		singleRequest.Values = append(singleRequest.Values, rawRequest.Values[i])
+		for k, v := range rawRequest.Meta {
 			singleRequest.Meta[k] = v
 		}
 		singleRequestStr, err := marshalJobRequests(s.sep, singleRequest)

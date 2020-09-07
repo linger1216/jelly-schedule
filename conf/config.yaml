@@ -1,8 +1,8 @@
 # schedule config
 
 etcd:
-#  uri: 192.168.1.31:3379
-  uri: localhost:2379
+  uri: 192.168.1.31:3379
+#  uri: localhost:2379
   timeout: 5
 
 job:

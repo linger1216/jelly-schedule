@@ -15,6 +15,7 @@ v0.1.0 基本版本
 - 日志搜集与查询
 - k8s支持
 - ~~jobId 不存在的时候, 任务执行失败~~
+- loop 不知道什么时候结束
 
 
 ### linux
@@ -90,3 +91,7 @@ loop_and_or
 loop_or_a
 
 
+EchoJob_id and A
+EchoJob_id and (EchoJob_id or EchoJob_id) loop EchoJob_id:
+A loop EchoJob_id
+EchoJob_id and (EchoJob_id or EchoJob_id)

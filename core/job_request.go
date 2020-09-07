@@ -58,6 +58,7 @@ type JobRequest struct {
 	Meta    map[string]interface{} `json:"meta,omitempty"`
 	Values  []string               `json:"values,omitempty"`
 	Pattern string                 `json:"pattern,omitempty"`
+	group   int
 }
 
 func NewJobRequest() *JobRequest {
@@ -91,6 +92,8 @@ func (j *JobRequest) gen() error {
 }
 
 func (j *JobRequest) split(n int) []*JobRequest {
+	// todo
+	_ = j.group
 	total := len(j.Values)
 	pages := utils.SplitPage(int64(total), n)
 	ret := make([]*JobRequest, 0, n)
