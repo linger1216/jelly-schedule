@@ -43,7 +43,7 @@ func (s *SerialJob) Exec(ctx context.Context, req string) (string, error) {
 		n := 1
 		switch x := s.jobs[i].(type) {
 		case *SerialJob:
-		case *AlternateJob:
+		case *LoopJob:
 		case *ParallelJob:
 			n = len(x.jobs)
 		}

@@ -255,7 +255,7 @@ func (e *Executor) exec(workFlow *WorkFlow) (string, error) {
 		// 抽象一个虚拟节点来执行
 		// 这样参数的分发(split)会全部由Serial来执行
 		final = NewSerialJob(e.separate, job)
-	case *AlternateJob:
+	case *LoopJob:
 		final = job
 	default:
 		// 就一个单独的Job
@@ -285,7 +285,7 @@ func (e *Executor) orJob(left, right Job) Job {
 }
 
 func (e *Executor) loopJob(left, right Job) Job {
-	return NewAlternateJob(e.separate, _mergeJobRequests, left, right)
+	return NewLoopJob(e.separate, _mergeJobRequests, left, right)
 }
 
 func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {

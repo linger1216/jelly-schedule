@@ -19,7 +19,7 @@ const (
 	_Workflow     = "workflow"
 	_Expr         = "expr"
 	_Job          = "job"
-	_AlternateJob = "AlternateJob"
+	_AlternateJob = "LoopJob"
 	_SerialJob    = "SerialJob"
 	_ParallelJob  = "ParallelJob"
 )

@@ -37,7 +37,17 @@ func _mergeJobRequests(sep string, paras ...string) (string, error) {
 		if err := jsoniter.ConfigFastest.UnmarshalFromString(paras[i], jobRequest); err != nil {
 			return "", err
 		}
-		ret.Values = append(ret.Values, jobRequest.Values...)
+
+		// copy values
+		for k := range jobRequest.Values {
+			if _, ok := ret.Values[k]; ok {
+				ret.Values[k] = append(ret.Values[k], jobRequest.Values[k]...)
+			} else {
+				ret.Values[k] = jobRequest.Values[k]
+			}
+		}
+
+		// copy meta
 		for k, v := range jobRequest.Meta {
 			ret.Meta[k] = v
 		}
@@ -53,61 +63,73 @@ func _mergeJobRequests(sep string, paras ...string) (string, error) {
 Meta 每个request负责解释
 Values 呈现给job的值域
 Pattern 值域表达式, 负责填充值域
+
+//Values  []string               `json:"values,omitempty"`
 */
 type JobRequest struct {
-	Meta    map[string]interface{} `json:"meta,omitempty"`
-	Values  []string               `json:"values,omitempty"`
-	Pattern string                 `json:"pattern,omitempty"`
+	Meta map[string]interface{} `json:"meta,omitempty"`
+	//Values  []string               `json:"values,omitempty"`
+	Values  map[string][]string `json:"values,omitempty"`
+	Pattern string              `json:"pattern,omitempty"`
 	group   int
 }
 
 func NewJobRequest() *JobRequest {
-	return &JobRequest{Meta: make(map[string]interface{})}
+	return &JobRequest{Meta: make(map[string]interface{}), Values: make(map[string][]string)}
 }
 
 type JobResponse JobRequest
 
 func (j *JobRequest) gen() error {
-
 	if len(j.Pattern) == 0 {
 		return nil
 	}
 
-	splitHolders, arrangeHolders, err := parsePattern(j.Pattern)
+	values, err := arrangePattern(j.Pattern)
 	if err != nil {
 		return err
 	}
-	splitPatterns, err := arrangePattern([]string{j.Pattern}, splitHolders)
-	if err != nil {
-		return err
-	}
-	for _, v := range splitPatterns {
-		if arrangePatterns, err := arrangePattern([]string{v}, arrangeHolders); err == nil {
-			j.Values = append(j.Values, arrangePatterns...)
-		}
-	}
-
+	j.Values = values
 	j.Pattern = ""
 	return nil
 }
 
 func (j *JobRequest) split(n int) []*JobRequest {
-	// todo
-	_ = j.group
 	total := len(j.Values)
 	pages := utils.SplitPage(int64(total), n)
 	ret := make([]*JobRequest, 0, n)
 	for _, page := range pages {
 		req := &JobRequest{
 			Meta:   j.Meta,
-			Values: j.Values[page.Start:page.End],
+			Values: make(map[string][]string),
 		}
-		ret = append(ret, req)
+		// random get k,v
+		for i := page.Start; i < page.End; i++ {
+			var key string
+			var val []string
+			for k, v := range j.Values {
+				key = k
+				val = v
+				break
+			}
+			req.Values[key] = val
+			delete(j.Values, key)
+			ret = append(ret, req)
+		}
 	}
 	if len(ret) == 0 {
 		return nil
 	}
 	return ret
+}
+
+func NewJobRequestByKey(key string, src *JobRequest) *JobRequest {
+	req := NewJobRequest()
+	req.Values[key] = src.Values[key]
+	for k, v := range src.Meta {
+		req.Meta[k] = v
+	}
+	return req
 }
 
 func marshalJobRequests(sep string, reqs ...*JobRequest) (string, error) {

@@ -7,22 +7,22 @@ import (
 	"strings"
 )
 
-type AlternateJob struct {
+type LoopJob struct {
 	sep      string
 	mergeFn  MergeFunc
 	jobs     []Job
 	progress *atomic.Int32
 }
 
-func NewAlternateJob(sep string, mergeFn MergeFunc, jobs ...Job) *AlternateJob {
-	return &AlternateJob{sep: sep, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
+func NewLoopJob(sep string, mergeFn MergeFunc, jobs ...Job) *LoopJob {
+	return &LoopJob{sep: sep, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
 }
 
-func (s *AlternateJob) Append(job Job) {
+func (s *LoopJob) Append(job Job) {
 	s.jobs = append(s.jobs, job)
 }
 
-func (s *AlternateJob) Name() string {
+func (s *LoopJob) Name() string {
 	names := make([]string, 0, len(s.jobs))
 	for _, v := range s.jobs {
 		names = append(names, v.Name())
@@ -30,11 +30,11 @@ func (s *AlternateJob) Name() string {
 	return strings.Join(names, "=>")
 }
 
-func (s *AlternateJob) Progress() int {
+func (s *LoopJob) Progress() int {
 	return int(s.progress.Load())
 }
 
-func (s *AlternateJob) Exec(ctx context.Context, req string) (string, error) {
+func (s *LoopJob) Exec(ctx context.Context, req string) (string, error) {
 
 	rawRequest := NewJobRequest()
 	if err := jsoniter.ConfigFastest.UnmarshalFromString(req, rawRequest); err != nil {
@@ -45,22 +45,17 @@ func (s *AlternateJob) Exec(ctx context.Context, req string) (string, error) {
 	}
 
 	resps := make([]string, 0, len(rawRequest.Values))
-	for i := range rawRequest.Values {
-
+	for key := range rawRequest.Values {
 		_MOD(_AlternateJob).With(_Job, s.Name()).Debugf("req :%s", req)
 
 		// 产生一个新的request
-		singleRequest := NewJobRequest()
-		singleRequest.Values = append(singleRequest.Values, rawRequest.Values[i])
-		for k, v := range rawRequest.Meta {
-			singleRequest.Meta[k] = v
-		}
-		singleRequestStr, err := marshalJobRequests(s.sep, singleRequest)
+		oneRequest := NewJobRequestByKey(key, rawRequest)
+		oneRequestBuf, err := marshalJobRequests(s.sep, oneRequest)
 		if err != nil {
 			return "", err
 		}
 
-		arg := singleRequestStr
+		arg := oneRequestBuf
 		for j := range s.jobs {
 			// 这时候任务可能是串/并/交替
 			// 但不管是什么, 只传给一个request,

@@ -90,7 +90,7 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 			e.push(e.orFn(left, right))
 		}
 	case parser.ExprLexerLOOP:
-		if v, ok := left.(*AlternateJob); ok {
+		if v, ok := left.(*LoopJob); ok {
 			v.jobs = append(v.jobs, right)
 			e.push(left)
 		} else {
