@@ -37,7 +37,7 @@ func (s *SerialJob) Exec(ctx context.Context, req string) (string, error) {
 	// 串行任务收到的永远是一个request
 	// 并行任务收到的可能是一个request或者[]request
 	arg := req
-	//l.Debugf("SerialJob reqs:%v", arg)
+	_MOD(_SerialJob).With(_Job, s.Name()).Debugf("exec req:%s", req)
 	for i := range s.jobs {
 		// 后面有n个并发任务, 检查参数是不是要分割
 		n := 1

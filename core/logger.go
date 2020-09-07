@@ -14,11 +14,14 @@ const (
 	ProjectKey   = "project"
 	ProjectValue = "schedule"
 
-	_Mod      = "module"
-	_Exec     = "executor"
-	_Workflow = "workflow"
-	_Expr     = "expr"
-	_Job      = "job"
+	_Mod          = "module"
+	_Exec         = "executor"
+	_Workflow     = "workflow"
+	_Expr         = "expr"
+	_Job          = "job"
+	_AlternateJob = "AlternateJob"
+	_SerialJob    = "SerialJob"
+	_ParallelJob  = "ParallelJob"
 )
 
 func init() {

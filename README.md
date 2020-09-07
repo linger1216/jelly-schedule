@@ -66,3 +66,27 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 
 antlr4 -Dlanguage=Go -o parser Expr.g4
 
+
+
+
+测试用例
+job: a b c d
+op: and or loop
+
+and
+or
+loop
+
+and_and
+or_or
+loop_loop
+
+
+and_or_loop: EchoJob_id and (EchoJob_id or EchoJob_id) loop EchoJob_id
+and_loop_or: EchoJob_id and EchoJob_id loop EchoJob_id or (EchoJob_id or EchoJob_id)
+or_and_loop: (EchoJob_id or EchoJob_id) and EchoJob_id loop EchoJob_id
+or_loop_and
+loop_and_or
+loop_or_a
+
+

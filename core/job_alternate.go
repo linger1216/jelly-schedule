@@ -46,6 +46,9 @@ func (s *AlternateJob) Exec(ctx context.Context, req string) (string, error) {
 
 	resps := make([]string, 0, len(jobRequest.Values))
 	for i := range jobRequest.Values {
+
+		_MOD(_AlternateJob).With(_Job, s.Name()).Debugf("req :%s", req)
+
 		// 产生一个新的request
 		singleRequest := NewJobRequest()
 		singleRequest.Values = append(singleRequest.Values, jobRequest.Values[i])
