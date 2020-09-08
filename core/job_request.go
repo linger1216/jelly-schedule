@@ -117,8 +117,8 @@ func (j *JobRequest) split(n int) []*JobRequest {
 			}
 			req.Values[key] = val
 			delete(j.Values, key)
-			ret = append(ret, req)
 		}
+		ret = append(ret, req)
 	}
 	if len(ret) == 0 {
 		return nil
