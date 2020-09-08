@@ -12,9 +12,10 @@ v0.1.0 基本版本
 - 每个任务增加是否立即实行,以及delay的时间参数 毕竟cron是要等下一个时间周期的
 - 基于name的选择job执行(目前是基于id), 考虑到打洞
 - 完善文档 (可能永远都不会完成)
-
+- 日志搜集与查询
 - k8s支持
 - ~~jobId 不存在的时候, 任务执行失败~~
+- loop 不知道什么时候结束
 
 
 ### linux
@@ -68,5 +69,33 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 - 0.1.1 jobrequest 参数版本
 
 
+antlr4 -Dlanguage=Go -o parser Expr.g4
 
 
+
+
+测试用例
+job: a b c d
+op: and or loop
+
+and
+or
+loop
+
+and_and
+or_or
+loop_loop
+
+
+and_or_loop: EchoJob_id and (EchoJob_id or EchoJob_id) loop EchoJob_id
+and_loop_or: EchoJob_id and EchoJob_id loop EchoJob_id or (EchoJob_id or EchoJob_id)
+or_and_loop: (EchoJob_id or EchoJob_id) and EchoJob_id loop EchoJob_id
+or_loop_and
+loop_and_or
+loop_or_a
+
+
+EchoJob_id and A
+EchoJob_id and (EchoJob_id or EchoJob_id) loop EchoJob_id:
+A loop EchoJob_id
+EchoJob_id and (EchoJob_id or EchoJob_id)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/linger1216/jelly-schedule/core"
-	"github.com/linger1216/jelly-schedule/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -31,24 +30,23 @@ func (e *HttpJob) Name() string {
 }
 
 func (e *HttpJob) Exec(ctx context.Context, req string) (string, error) {
-	cmds, err := utils.ExactStringArrayRequests(req, ";")
-	if err != nil {
-		return "", err
-	}
-
-	var resp []byte
-	for _, cmd := range cmds {
-		httpRequest := &HttpRequest{}
-		err = jsoniter.ConfigFastest.Unmarshal([]byte(cmd), httpRequest)
-		if err != nil {
-			return "", err
+	reqs, err := core.UnMarshalJobRequests(req, ";")
+	for i := range reqs {
+		for _, arr := range reqs[i].Values {
+			for _, cmd := range arr {
+				httpRequest := &HttpRequest{}
+				err = jsoniter.ConfigFastest.Unmarshal([]byte(cmd), httpRequest)
+				if err != nil {
+					return "", err
+				}
+				_, err = doHttpRequest(httpRequest)
+				if err != nil {
+					return "", err
+				}
+			}
 		}
-		resp, err = doHttpRequest(httpRequest)
-		if err != nil {
-			return "", err
-		}
 	}
-	return string(resp), nil
+	return core.GenJobRequestStringByMeta(";", core.NewJobRequestByMeta(reqs...))
 }
 
 func doHttpRequest(request *HttpRequest) ([]byte, error) {

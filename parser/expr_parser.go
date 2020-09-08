@@ -16,12 +16,12 @@ var _ = reflect.Copy
 var _ = strconv.Itoa
 
 var parserATN = []uint16{
-	3, 24715, 42794, 33075, 47597, 16764, 15335, 30598, 22884, 3, 8, 26, 4,
+	3, 24715, 42794, 33075, 47597, 16764, 15335, 30598, 22884, 3, 9, 26, 4,
 	2, 9, 2, 4, 3, 9, 3, 3, 2, 3, 2, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 5, 3, 16, 10, 3, 3, 3, 3, 3, 3, 3, 7, 3, 21, 10, 3, 12, 3, 14, 3, 24,
-	11, 3, 3, 3, 2, 3, 4, 4, 2, 4, 2, 3, 3, 2, 5, 6, 2, 25, 2, 6, 3, 2, 2,
+	11, 3, 3, 3, 2, 3, 4, 4, 2, 4, 2, 3, 3, 2, 5, 7, 2, 25, 2, 6, 3, 2, 2,
 	2, 4, 15, 3, 2, 2, 2, 6, 7, 5, 4, 3, 2, 7, 8, 7, 2, 2, 3, 8, 3, 3, 2, 2,
-	2, 9, 10, 8, 3, 1, 2, 10, 16, 7, 7, 2, 2, 11, 12, 7, 3, 2, 2, 12, 13, 5,
+	2, 9, 10, 8, 3, 1, 2, 10, 16, 7, 8, 2, 2, 11, 12, 7, 3, 2, 2, 12, 13, 5,
 	4, 3, 2, 13, 14, 7, 4, 2, 2, 14, 16, 3, 2, 2, 2, 15, 9, 3, 2, 2, 2, 15,
 	11, 3, 2, 2, 2, 16, 22, 3, 2, 2, 2, 17, 18, 12, 5, 2, 2, 18, 19, 9, 2,
 	2, 2, 19, 21, 5, 4, 3, 6, 20, 17, 3, 2, 2, 2, 21, 24, 3, 2, 2, 2, 22, 20,
@@ -35,7 +35,7 @@ var literalNames = []string{
 	"", "'('", "')'",
 }
 var symbolicNames = []string{
-	"", "", "", "AND", "OR", "ID", "WHITESPACE",
+	"", "", "", "AND", "OR", "LOOP", "ID", "WHITESPACE",
 }
 
 var ruleNames = []string{
@@ -74,8 +74,9 @@ const (
 	ExprParserT__1       = 2
 	ExprParserAND        = 3
 	ExprParserOR         = 4
-	ExprParserID         = 5
-	ExprParserWHITESPACE = 6
+	ExprParserLOOP       = 5
+	ExprParserID         = 6
+	ExprParserWHITESPACE = 7
 )
 
 // ExprParser rules.
@@ -333,6 +334,10 @@ func (s *ANDORContext) OR() antlr.TerminalNode {
 	return s.GetToken(ExprParserOR, 0)
 }
 
+func (s *ANDORContext) LOOP() antlr.TerminalNode {
+	return s.GetToken(ExprParserLOOP, 0)
+}
+
 func (s *ANDORContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ExprListener); ok {
 		listenerT.EnterANDOR(s)
@@ -473,7 +478,7 @@ func (p *ExprParser) expression(_p int) (localctx IExpressionContext) {
 
 				_la = p.GetTokenStream().LA(1)
 
-				if !(_la == ExprParserAND || _la == ExprParserOR) {
+				if !(((_la)&-(0x1f+1)) == 0 && ((1<<uint(_la))&((1<<ExprParserAND)|(1<<ExprParserOR)|(1<<ExprParserLOOP))) != 0) {
 					var _ri = p.GetErrorHandler().RecoverInline(p)
 
 					localctx.(*ANDORContext).op = _ri

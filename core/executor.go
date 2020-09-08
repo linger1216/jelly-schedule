@@ -240,13 +240,28 @@ func (e *Executor) exec(workFlow *WorkFlow) (string, error) {
 	lexer := parser.NewExprLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	p := parser.NewExprParser(stream)
-	exprListener := NewExprListener(e.getJob, e.andJob, e.orJob)
+	exprListener := NewExprListener(e.getJob, e.andJob, e.orJob, e.loopJob)
 	antlr.ParseTreeWalkerDefault.Walk(exprListener, p.Start())
 	if exprListener.err != nil {
 		return "", exprListener.err
 	}
 	job := exprListener.Pop()
-	return job.Exec(context.Background(), workFlow.Para)
+
+	var final Job
+	switch job.(type) {
+	case *SerialJob:
+		final = job
+	case *ParallelJob:
+		// 抽象一个虚拟节点来执行
+		// 这样参数的分发(split)会全部由Serial来执行
+		final = NewSerialJob(e.separate, job)
+	case *LoopJob:
+		final = job
+	default:
+		// 就一个单独的Job
+		final = NewSerialJob(e.separate, job)
+	}
+	return final.Exec(context.Background(), workFlow.Para)
 }
 
 func (e *Executor) getJob(jobId string) (Job, error) {
@@ -262,11 +277,15 @@ func (e *Executor) getJob(jobId string) (Job, error) {
 }
 
 func (e *Executor) andJob(left, right Job) Job {
-	return NewSerialJob(left, right)
+	return NewSerialJob(e.separate, left, right)
 }
 
 func (e *Executor) orJob(left, right Job) Job {
-	return NewParallelJob(SplitFactory(e.separate), MergeFactory(e.separate), left, right)
+	return NewParallelJob(e.separate, _splitStrings, _mergeJobRequests, left, right)
+}
+
+func (e *Executor) loopJob(left, right Job) Job {
+	return NewLoopJob(e.separate, _mergeJobRequests, left, right)
 }
 
 func changeWorkFlowState(db *sqlx.DB, state string, workflow *WorkFlow) error {

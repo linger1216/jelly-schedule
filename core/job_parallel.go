@@ -9,14 +9,15 @@ import (
 )
 
 type ParallelJob struct {
+	sep      string
 	jobs     []Job
 	progress *atomic.Int32
 	mergeFn  MergeFunc
 	splitFn  SplitFunc
 }
 
-func NewParallelJob(splitFn SplitFunc, mergeFn MergeFunc, jobs ...Job) *ParallelJob {
-	return &ParallelJob{splitFn: splitFn, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
+func NewParallelJob(sep string, splitFn SplitFunc, mergeFn MergeFunc, jobs ...Job) *ParallelJob {
+	return &ParallelJob{sep: sep, splitFn: splitFn, mergeFn: mergeFn, jobs: jobs, progress: atomic.NewInt32(0)}
 }
 
 func (s *ParallelJob) Name() string {
@@ -35,8 +36,14 @@ func (s *ParallelJob) Progress() int {
 
 func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 
+	_MOD(_ParallelJob).With(_Job, s.Name()).Debugf("exec req:%s", req)
+
 	size := len(s.jobs)
-	reqs := s.splitFn(req)
+	reqs, err := s.splitFn(s.sep, req)
+	if err != nil {
+		return "", err
+	}
+
 	if len(reqs) != size {
 		l.Warnf("ParallelJob actural para size:%d, job:%d", len(reqs), size)
 	}
@@ -45,14 +52,21 @@ func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 	paras := make([]string, len(s.jobs))
 	wg := sync.WaitGroup{}
 
-	var para string
+	var defaultPara string
+	if len(reqs) > 0 {
+		defaultPara = reqs[len(reqs)-1]
+	}
+
 	for i := range s.jobs {
 		wg.Add(1)
 		go func(pos int) {
 			defer wg.Done()
 			defer s.progress.Add(int32(100 / len(s.jobs)))
+			var para string
 			if pos < len(reqs) {
 				para = reqs[pos]
+			} else {
+				para = defaultPara
 			}
 			resp, err := s.jobs[pos].Exec(ctx, para)
 			if err != nil {
@@ -70,5 +84,5 @@ func (s *ParallelJob) Exec(ctx context.Context, req string) (string, error) {
 	}
 
 	// merge parameters
-	return s.mergeFn(paras...), nil
+	return s.mergeFn(s.sep, paras...)
 }

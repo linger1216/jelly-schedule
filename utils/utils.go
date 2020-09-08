@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"math"
 	"net"
@@ -185,28 +184,28 @@ func PathExists(path string) bool {
 }
 
 type Page struct {
-	Start uint64
-	Size  uint64
+	Start int64
+	End   int64
 }
 
-func SplitPage(pageSize, count uint64) []*Page {
-	allPage := uint64(math.Ceil(float64(count) / float64(pageSize)))
+func SplitPage(total int64, n int) []*Page {
+	pageSize := int64(math.Ceil(float64(total) / float64(n)))
 	ret := make([]*Page, 0)
-	if pageSize >= count {
+	if pageSize >= total {
 		ret = append(ret, &Page{
 			Start: 0,
-			Size:  count,
+			End:   total,
 		})
 	} else {
-		for i := uint64(0); i < allPage-1; i++ {
+		for i := 0; i < n-1; i++ {
 			ret = append(ret, &Page{
-				Start: i * pageSize,
-				Size:  pageSize,
+				Start: int64(i) * pageSize,
+				End:   int64(i+1) * pageSize,
 			})
 		}
 		ret = append(ret, &Page{
-			Start: (allPage - 1) * pageSize,
-			Size:  count - (allPage-1)*pageSize,
+			Start: int64(n-1) * pageSize,
+			End:   total,
 		})
 	}
 	return ret
@@ -298,20 +297,4 @@ func InterruptHandler(errc chan<- error) {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	terminateError := fmt.Errorf("%s", <-c)
 	errc <- terminateError
-}
-
-func ExactStringArrayRequests(req string, seq string) ([]string, error) {
-	args := make([]string, 0)
-	_ = jsoniter.ConfigFastest.Unmarshal([]byte(req), &args)
-	if len(args) > 0 {
-		return args, nil
-	}
-	arr := strings.Split(req, seq)
-	for i := range arr {
-		args = append(args, arr[i])
-	}
-	if len(args) == 0 {
-		args = append(args, req)
-	}
-	return args, nil
 }

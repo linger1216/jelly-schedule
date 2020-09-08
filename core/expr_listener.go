@@ -8,18 +8,21 @@ import (
 
 // func (e *Executor) getJob(jobId string) (Job, error) {
 type ExprListener struct {
-	err   error
-	stack []Job
-	getFn func(string) (Job, error)
-	andFn func(left, right Job) Job
-	orFn  func(left, right Job) Job
+	err    error
+	stack  []Job
+	getFn  func(string) (Job, error)
+	andFn  func(left, right Job) Job
+	orFn   func(left, right Job) Job
+	loopFn func(left, right Job) Job
 }
 
 func NewExprListener(
 	getFn func(string) (Job, error),
 	andFn func(left, right Job) Job,
-	orFn func(left, right Job) Job) *ExprListener {
-	return &ExprListener{err: nil, getFn: getFn, andFn: andFn, orFn: orFn}
+	orFn func(left, right Job) Job,
+	loopFn func(left, right Job) Job,
+) *ExprListener {
+	return &ExprListener{err: nil, getFn: getFn, andFn: andFn, orFn: orFn, loopFn: loopFn}
 }
 
 func (e *ExprListener) error() error {
@@ -85,6 +88,13 @@ func (e *ExprListener) ExitANDOR(c *parser.ANDORContext) {
 			e.push(left)
 		} else {
 			e.push(e.orFn(left, right))
+		}
+	case parser.ExprLexerLOOP:
+		if v, ok := left.(*LoopJob); ok {
+			v.jobs = append(v.jobs, right)
+			e.push(left)
+		} else {
+			e.push(e.loopFn(left, right))
 		}
 	default:
 		panic(fmt.Sprintf("unexpected op: %s", c.GetOp().GetText()))
