@@ -84,6 +84,34 @@ func NewJobRequest() *JobRequest {
 
 type JobResponse JobRequest
 
+func (j *JobRequest) GetStringFromMeta(key string) string {
+	if v, ok := j.Meta[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func (j *JobRequest) GetBytesFromMeta(key string) []byte {
+	if v, ok := j.Meta[key].([]byte); ok {
+		return v
+	}
+	return nil
+}
+
+func (j *JobRequest) GetInt64FromMeta(key string) int64 {
+	if v, ok := j.Meta[key].(int64); ok {
+		return v
+	}
+	return 0
+}
+
+func (j *JobRequest) GetBoolFromMeta(key string) bool {
+	if v, ok := j.Meta[key].(bool); ok {
+		return v
+	}
+	return false
+}
+
 func (j *JobRequest) gen() error {
 	if len(j.Pattern) == 0 {
 		return nil
