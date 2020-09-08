@@ -63,6 +63,10 @@ replace go.etcd.io/etcd => github.com/etcd-io/etcd v3.3.22+incompatible
 2. https://github.com/busgo/forest
 
 
+# version
+- 0.1.0 string参数版本
+- 0.1.1 jobrequest 参数版本
+
 
 
 
