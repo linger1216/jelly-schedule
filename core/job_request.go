@@ -10,6 +10,10 @@ import (
 type SplitFunc func(sep string, paras string) ([]string, error)
 type MergeFunc func(sep string, paras ...string) (string, error)
 
+const (
+	EmptyJobRequest = "{}"
+)
+
 func _splitStrings(sep string, paras string) ([]string, error) {
 	arr := strings.Split(paras, sep)
 	ret := make([]string, len(arr))
@@ -52,7 +56,7 @@ func _mergeJobRequests(sep string, paras ...string) (string, error) {
 			ret.Meta[k] = v
 		}
 	}
-	buf, err := marshalJobRequests(sep, ret)
+	buf, err := MarshalJobRequests(sep, ret)
 	if err != nil {
 		return "", err
 	}
@@ -84,12 +88,11 @@ func (j *JobRequest) gen() error {
 	if len(j.Pattern) == 0 {
 		return nil
 	}
-
-	values, err := arrangePattern(j.Pattern)
+	p, err := ParsePattern(j.Pattern)
 	if err != nil {
 		return err
 	}
-	j.Values = values
+	j.Values = p.Map(defaultKeyGen)
 	j.Pattern = ""
 	return nil
 }
@@ -132,7 +135,27 @@ func NewJobRequestByKey(key string, src *JobRequest) *JobRequest {
 	return req
 }
 
-func marshalJobRequests(sep string, reqs ...*JobRequest) (string, error) {
+func NewJobRequestByMeta(src ...*JobRequest) *JobRequest {
+	req := NewJobRequest()
+	for _, one := range src {
+		for k, v := range one.Meta {
+			req.Meta[k] = v
+		}
+	}
+	return req
+}
+
+func GenJobRequestStringByMeta(sep string, src ...*JobRequest) (string, error) {
+	req := NewJobRequest()
+	for _, one := range src {
+		for k, v := range one.Meta {
+			req.Meta[k] = v
+		}
+	}
+	return MarshalJobRequests(sep, req)
+}
+
+func MarshalJobRequests(sep string, reqs ...*JobRequest) (string, error) {
 	size := len(reqs)
 	if size == 0 {
 		return "", nil
@@ -146,4 +169,18 @@ func marshalJobRequests(sep string, reqs ...*JobRequest) (string, error) {
 		paras[i] = string(v)
 	}
 	return _mergeStrings(sep, paras...)
+}
+
+func UnMarshalJobRequests(req, sep string) ([]*JobRequest, error) {
+	paras := strings.Split(req, sep)
+	ret := make([]*JobRequest, 0, len(paras))
+	for i := range paras {
+		jobRequest := NewJobRequest()
+		if err := jsoniter.ConfigFastest.UnmarshalFromString(paras[i], jobRequest); err == nil {
+			ret = append(ret, jobRequest)
+		} else {
+			return nil, err
+		}
+	}
+	return ret, nil
 }

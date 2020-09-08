@@ -57,7 +57,7 @@ func (s *SerialJob) Exec(ctx context.Context, req string) (string, error) {
 			return "", err
 		}
 
-		jobRequestsStr, err := marshalJobRequests(s.sep, jobRequest.split(n)...)
+		jobRequestsStr, err := MarshalJobRequests(s.sep, jobRequest.split(n)...)
 		if err != nil {
 			return "", err
 		}

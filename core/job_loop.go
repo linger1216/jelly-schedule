@@ -50,7 +50,7 @@ func (s *LoopJob) Exec(ctx context.Context, req string) (string, error) {
 
 		// 产生一个新的request
 		oneRequest := NewJobRequestByKey(key, rawRequest)
-		oneRequestBuf, err := marshalJobRequests(s.sep, oneRequest)
+		oneRequestBuf, err := MarshalJobRequests(s.sep, oneRequest)
 		if err != nil {
 			return "", err
 		}
