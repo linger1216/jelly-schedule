@@ -212,3 +212,12 @@ func UnMarshalJobRequests(req, sep string) ([]*JobRequest, error) {
 	}
 	return ret, nil
 }
+
+func UnMarshalJobRequest(req string) (*JobRequest, error) {
+	jobRequest := NewJobRequest()
+	err := jsoniter.ConfigFastest.UnmarshalFromString(req, jobRequest)
+	if err == nil {
+		return jobRequest, nil
+	}
+	return nil, err
+}

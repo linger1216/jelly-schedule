@@ -16,12 +16,12 @@ type Batcher struct {
 	wg       *sync.WaitGroup
 }
 
-func NewBatcher(batchSize, batchCount int, duration time.Duration) *Batcher {
+func NewBatcher(batchSize, bufferBatchCount int, duration time.Duration) *Batcher {
 	return &Batcher{
 		size:     batchSize,
 		duration: duration,
 		stop:     make(chan struct{}),
-		in:       make(chan interface{}, batchCount*batchSize),
+		in:       make(chan interface{}, bufferBatchCount*batchSize),
 		out:      make(chan []interface{}),
 		flush:    make(chan struct{}),
 	}
@@ -32,7 +32,6 @@ func (b *Batcher) stopTimer() {
 }
 
 func (b *Batcher) Start() {
-
 	if b.wg != nil {
 		return
 	}

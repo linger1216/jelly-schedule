@@ -63,22 +63,3 @@ func (w *cronAPI) GetCron(ctx context.Context, req interface{}) (interface{}, er
 	}
 	return resp, nil
 }
-
-
-
-//func encodeHTTPCronAPIResponse(w http.ResponseWriter, response interface{}) error {
-//	encoder := jsoniter.ConfigFastest.NewEncoder(w)
-//	encoder.SetEscapeHTML(false)
-//	switch x := response.(type) {
-//	case *GetCronResponse:
-//		return encoder.Encode(x.Ids)
-//	case *GetWorkflowResponse:
-//		return encoder.Encode(x.Workflows)
-//	case *ListWorkflowResponse:
-//		if len(x.Headers) > 0 {
-//			return writeHeader(w, x.Headers)
-//		}
-//		return encoder.Encode(x.Workflows)
-//	}
-//	return encoder.Encode(response)
-//}
