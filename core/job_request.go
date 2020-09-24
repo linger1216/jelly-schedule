@@ -183,6 +183,14 @@ func GenJobRequestStringByMeta(sep string, src ...*JobRequest) (string, error) {
 	return MarshalJobRequests(sep, req)
 }
 
+func MarshalJobRequest(req *JobRequest) (string, error) {
+	v, err := jsoniter.ConfigFastest.Marshal(req)
+	if err != nil {
+		return "", err
+	}
+	return string(v), nil
+}
+
 func MarshalJobRequests(sep string, reqs ...*JobRequest) (string, error) {
 	size := len(reqs)
 	if size == 0 {
