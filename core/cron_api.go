@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 	"github.com/gorilla/mux"
-	"github.com/linger1216/jelly-schedule/utils"
+	"github.com/linger1216/go-utils/convert"
 	"github.com/robfig/cron/v3"
 	"net/http"
 	"time"
@@ -37,7 +37,7 @@ func decodeGetCronRequest(r *http.Request) (interface{}, error) {
 		req.Expr = arr[0]
 	}
 	if str, ok := queryParams["next_count"]; ok && len(str) > 0 {
-		req.NextCount = int(utils.StringToInt64(str[0]))
+		req.NextCount = int(convert.StringToInt64(str[0]))
 	}
 	return req, nil
 }

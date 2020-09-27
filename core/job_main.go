@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/linger1216/jelly-schedule/utils"
+	"github.com/linger1216/go-utils/sys"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
@@ -41,7 +41,7 @@ func StartClientJob(job Job) {
 	}
 
 	if len(config.Job.Host) > 0 {
-		err = os.Setenv(utils.SERVICE_HOST, config.Job.Host)
+		err = os.Setenv(sys.SERVICE_HOST, config.Job.Host)
 		if err != nil {
 			panic(err)
 		}
@@ -50,7 +50,7 @@ func StartClientJob(job Job) {
 	end := make(chan error)
 	etcd := NewEtcd(&config.Etcd)
 	NewJobServer(etcd, id, job)
-	go utils.InterruptHandler(end)
+	go sys.InterruptHandler(end)
 	<-end
 }
 

@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/linger1216/jelly-schedule/utils"
+	"github.com/linger1216/go-utils/inout"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,7 +14,7 @@ type ScheduleConfig struct {
 }
 
 func LoadScheduleConfig(filename string) (*ScheduleConfig, error) {
-	buf, err := utils.ReadFileContent(filename)
+	buf, err := inout.ReadFileContent(filename)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@ package core
 import (
 	"bytes"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/linger1216/jelly-schedule/utils"
+	"github.com/linger1216/go-utils/common"
 	"strings"
 )
 
@@ -127,7 +127,7 @@ func (j *JobRequest) gen() error {
 
 func (j *JobRequest) split(n int) []*JobRequest {
 	total := len(j.Values)
-	pages := utils.SplitPage(int64(total), n)
+	pages := common.SplitPage(int64(total), n)
 	ret := make([]*JobRequest, 0, n)
 	for _, page := range pages {
 		req := &JobRequest{

@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/linger1216/jelly-schedule/utils"
+	"github.com/linger1216/go-utils/convert"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -291,7 +291,7 @@ func (w *workFlowAPI) ListWorkflow(ctx context.Context, req interface{}) (interf
 		}
 		resp.Headers = append(resp.Headers, &KV{
 			Key:   HeadCountKey,
-			Value: utils.Int64ToString(count),
+			Value: convert.Int64ToString(count),
 		})
 	} else {
 		ret, err := w.queryWorkflow(query, args)
@@ -332,10 +332,10 @@ func decodeListQueryParams(req *ListWorkflowRequest, queryParams url.Values) *Li
 	}
 
 	if str, ok := queryParams["start_time"]; ok && len(str) > 0 {
-		req.StartTime = utils.StringToInt64(str[0])
+		req.StartTime = convert.StringToInt64(str[0])
 	}
 	if str, ok := queryParams["end_time"]; ok && len(str) > 0 {
-		req.EndTime = utils.StringToInt64(str[0])
+		req.EndTime = convert.StringToInt64(str[0])
 	}
 
 	if str, ok := queryParams["current_page"]; ok && len(str) > 0 {
@@ -435,51 +435,51 @@ func encodeHTTPWorkflowResponse(w http.ResponseWriter, response interface{}) err
 func transWorkflow(prefix string, m map[string]interface{}) (*WorkFlow, error) {
 	ret := &WorkFlow{}
 	if v, ok := m[prefix+"id"]; ok {
-		ret.Id = utils.ToString(v)
+		ret.Id = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"name"]; ok {
-		ret.Name = utils.ToString(v)
+		ret.Name = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"description"]; ok {
-		ret.Description = utils.ToString(v)
+		ret.Description = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"expression"]; ok {
-		ret.Expression = utils.ToString(v)
+		ret.Expression = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"cron"]; ok {
-		ret.Cron = utils.ToString(v)
+		ret.Cron = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"para"]; ok {
-		ret.Para = utils.ToString(v)
+		ret.Para = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"success_limit"]; ok {
-		ret.SuccessLimit = utils.ToInt64(v)
+		ret.SuccessLimit = convert.ToInt64(v)
 	}
 
 	if v, ok := m[prefix+"failed_limit"]; ok {
-		ret.FailedLimit = utils.ToInt64(v)
+		ret.FailedLimit = convert.ToInt64(v)
 	}
 
 	if v, ok := m[prefix+"belong_executor"]; ok {
-		ret.BelongExecutor = utils.ToString(v)
+		ret.BelongExecutor = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"state"]; ok {
-		ret.State = utils.ToString(v)
+		ret.State = convert.ToString(v)
 	}
 
 	if v, ok := m[prefix+"create_time"]; ok {
-		ret.CreateTime = utils.ToInt64(v)
+		ret.CreateTime = convert.ToInt64(v)
 	}
 
 	if v, ok := m[prefix+"update_time"]; ok {
-		ret.UpdateTime = utils.ToInt64(v)
+		ret.UpdateTime = convert.ToInt64(v)
 	}
 	return ret, nil
 }

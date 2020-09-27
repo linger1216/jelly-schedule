@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
-	"github.com/linger1216/jelly-schedule/utils"
-	"github.com/linger1216/jelly-schedule/utils/snowflake"
+	"github.com/linger1216/go-utils/snowflake"
+	"github.com/linger1216/go-utils/sys"
 	"github.com/valyala/fasttemplate"
 	"os"
 )
@@ -43,9 +43,9 @@ func NewJobServer(etcd *Etcd, id string, job Job) *JobServer {
 	ret.stats.Id = id
 	ret.stats.JobPath = jobPath
 	ret.stats.Name = job.Name()
-	ret.stats.Host = utils.GetHost()
+	ret.stats.Host = sys.GetHost()
 	ret.stats.ServicePath = `rpc`
-	port, err := utils.GetFreePort()
+	port, err := sys.GetFreePort()
 	if err != nil {
 		panic(err)
 	}

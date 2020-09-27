@@ -3,11 +3,10 @@ package core
 import (
 	"bytes"
 	"fmt"
+	"github.com/linger1216/go-utils/db/postgres"
+	"github.com/linger1216/go-utils/snowflake"
 	"strings"
 	"time"
-
-	"github.com/linger1216/jelly-schedule/utils"
-	"github.com/linger1216/jelly-schedule/utils/snowflake"
 )
 
 /*
@@ -84,7 +83,7 @@ func upsertWorkflowSql(workflows ...*WorkFlow) (string, []interface{}, error) {
 			v.Id = snowflake.Generate()
 		}
 
-		values = append(values, utils.ValueInject(i, WorkflowTableColumnSize))
+		values = append(values, postgres.ValuesPlaceHolder(i, WorkflowTableColumnSize))
 		args = append(args, v.Id, v.Name, v.Description, v.Expression, v.Cron, v.Para, v.SuccessLimit, v.FailedLimit,
 			v.BelongExecutor, v.State, createTime, updateTime)
 	}
@@ -94,7 +93,7 @@ func upsertWorkflowSql(workflows ...*WorkFlow) (string, []interface{}, error) {
 }
 
 func getWorkflowSql(ids []string) (string, []interface{}) {
-	query := fmt.Sprintf("select %s from %s where id in (%s);", WorkflowTableSelectColumn, WorkflowTableName, utils.ArrayToSqlIn(ids...))
+	query := fmt.Sprintf("select %s from %s where id in (%s);", WorkflowTableSelectColumn, WorkflowTableName, postgres.SqlStringIn(ids...))
 	return query, nil
 }
 
@@ -109,19 +108,19 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 	}
 
 	if len(in.Names) > 0 {
-		query := fmt.Sprintf("%s name in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.Names...))
+		query := fmt.Sprintf("%s name in (%s)", postgres.CondSql(firstCond), postgres.SqlStringArray(in.Names...))
 		buffer.WriteString(query)
 		firstCond = false
 	}
 
 	if len(in.States) > 0 {
-		query := fmt.Sprintf("%s state in (%s)", utils.CondSql(firstCond), utils.ArrayToSqlIn(in.States...))
+		query := fmt.Sprintf("%s state in (%s)", postgres.CondSql(firstCond), postgres.SqlStringIn(in.States...))
 		buffer.WriteString(query)
 		firstCond = false
 	}
 
 	if in.EndTime > 0 {
-		query := fmt.Sprintf("%s (update_time >= '%d' and update_time < '%d') ", utils.CondSql(firstCond), in.StartTime, in.EndTime)
+		query := fmt.Sprintf("%s (update_time >= '%d' and update_time < '%d') ", postgres.CondSql(firstCond), in.StartTime, in.EndTime)
 		buffer.WriteString(query)
 		firstCond = false
 	}
@@ -134,7 +133,7 @@ func listAssetsSql(in *ListWorkflowRequest) (string, []interface{}) {
 }
 
 func deleteWorkflowSql(ids []string) (string, []interface{}) {
-	query := fmt.Sprintf("delete from %s where id in (%s);", WorkflowTableName, utils.ArrayToSqlIn(ids...))
+	query := fmt.Sprintf("delete from %s where id in (%s);", WorkflowTableName, postgres.SqlStringIn(ids...))
 	return query, nil
 }
 
