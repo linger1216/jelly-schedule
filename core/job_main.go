@@ -1,10 +1,9 @@
 package core
 
 import (
+	"github.com/linger1216/go-utils/config"
 	"github.com/linger1216/go-utils/sys"
-	"github.com/mitchellh/mapstructure"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 )
@@ -15,18 +14,8 @@ func LoadUserConfig(field string, obj interface{}) error {
 	configFilename := kingpin.Flag("conf", "config file name").Short('c').Default(DefaultConfigFilename).String()
 	kingpin.Version("0.1.0")
 	kingpin.Parse()
-
-	buf, err := readFileContent(*configFilename)
-	if err != nil {
-		return err
-	}
-
-	m := make(map[string]interface{})
-	err = yaml.Unmarshal(buf, &m)
-	if err != nil {
-		return err
-	}
-	return mapstructure.Decode(m[field], obj)
+	yaml := config.NewYamlReader(*configFilename)
+	return yaml.ScanKey(field, obj)
 }
 
 func StartClientJob(job Job) {
